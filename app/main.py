@@ -1,10 +1,9 @@
-import os
+import os, logging
 from typing import Any, Dict
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from openai import OpenAI
 from qdrant_client import QdrantClient
-import logging
 
 # Habilita logging
 logging.basicConfig(level=logging.INFO)
@@ -13,14 +12,14 @@ logging.basicConfig(level=logging.INFO)
 OPENAI_KEY      = os.getenv("OPENAI_API_KEY")
 FINETUNED_MODEL = os.getenv("FINETUNED_MODEL")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
-QDRANT_HOST     = os.getenv("QDRANT_HOST")
-QDRANT_PORT     = int(os.getenv("QDRANT_PORT"))
+QDRANT_URL      = os.getenv("QDRANT_URL")
+QDRANT_API_KEY  = os.getenv("QDRANT_API_KEY")
 COLLECTION      = os.getenv("QDRANT_COLLECTION")
 
 # Inicializa clientes
 openai = OpenAI(api_key=OPENAI_KEY)
-qdrant = QdrantClient(url=f"http://{QDRANT_HOST}:{QDRANT_PORT}")
-app = FastAPI(title="API de RAG para Chamados")
+qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+app    = FastAPI(title="API de RAG para Chamados")
 
 # Modelos Pydantic
 class Chamado(BaseModel):
