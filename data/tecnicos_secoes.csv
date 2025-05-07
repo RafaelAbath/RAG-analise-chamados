@@ -1,26 +1,16 @@
-Setor,Técnico Responsável,Atribuições
-Autorização Prévia,Dayane Maria,Autorização de exames e procedimentos médicos sem OPME ou medicamentos
-Autorização Prévia,Dayane Maria,Autorização de vacinas e check-ups
-Autorização Prévia,Dayane Maria,Coordenação de remoções específicas
-Garantia de Atendimento,Valéria Sá Lemos,Autorização fora da rede e reembolso
-Garantia de Atendimento,Valéria Sá Lemos,"Organização de deslocamentos (passagens, hospedagem, etc.)"
-Medicamento,Camila Olímpio da Silva,Autorização de procedimentos com previsão de medicamentos
-Medicamento,Camila Olímpio da Silva,"Análise de medicamentos ambulatoriais, oncológicos, etc."
-TEA,Alana Pérez,"Autorização de terapias para TEA, TGD, TDAH, Down"
-Autorização Odontológica,Jady Paes,Autorização e suporte para atendimentos odontológicos
-Autorização Prévia – Casos especiais,Letícia Maitê,Processos judiciais e NIP relacionados a autorizações
-Home Care,Camila Martinez,"Autorização de atendimentos domiciliares, PAD"
-Home Care – Casos especiais,Beatriz Espindola,"Casos judiciais, NIP e reclames sobre Home Care"
-OPME,André Matias,"Autorização de órteses, próteses e materiais especiais (não urgentes)"
-OPME – Casos especiais,Hidines Junior,"Casos judiciais, NIP e reclames sobre OPME"
-Faturamento,Jorgete Lourenço,Faturamento médico-hospitalar e coparticipação
-Financeiro e Tributos,Paulo Roberto Júnior,Documentos fiscais e tributos de prestadores líquidos
-Faturamento Bruto,Lucas Ravely,Faturamento de prestadores com pagamento bruto
-Faturamento Odontológico,Carlos Arthur,Faturamento odontológico
-Casos especiais Faturamento,Pamela Fraga,"Judiciais, NIP, Reclame e planilhas de PEGs/Glosas"
-Credenciamento,Paloma Gomes,Gestão da rede credenciada e cadastro de prestadores
-Negociação,Lucas Jacomassi,Negociação de valores com prestadores
-Reembolso,Michele Leão,Reembolsos médicos pós-procedimento
-Reembolso Odontológico,Teonas Boff,Reembolsos odontológicos pós-procedimento
-Casos especiais Reembolso,Juliana Gomes,Reembolsos com NIP ou judiciais
-Prévia de Reembolso e Programas Saúde Caixa,Wallace Porfírio,Prévia de reembolso e programas sociais
+Setor,Técnico Responsável,Responsabilidades,Exemplos
+Autorização,Dayane Maria,"Análise de solicitações de exames, procedimentos médicos (exceto OPME), internações, vacinas e check-ups; Remoções e suporte a remoções domiciliares; Priorização de guias e análise de cobertura conforme normas vigentes; Resposta a dúvidas sobre solicitações, cancelamentos e negativas; Apoio técnico e subsídios a CESAD01 e outras coordenações; Avaliação de procedimentos com necessidade de autorização prévia (ANS e Saúde Caixa); Análise de prazo intervalar de eventos",
+Medicamento,Camila Olímpio da Silva,"Análise de solicitações de medicamentos de alto e baixo custo, terapias imunobiológicas, quimioterápicos; Verificação de cobertura e autorização prévia; Atendimento a dúvidas e priorização de processos; Apoio técnico e subsídios a CESAD01; Observância de critérios de cobertura (ROL ANS e Saúde Caixa); Análise de prazo intervalar; Pesquisa de valores; Contato com prestadores e beneficiários",
+TEA/TGD/TDAH,Alana Perez,"Análise de solicitações de terapias para TEA, TGD e TDAH; Abertura de guias via SIAGS; Verificação de cobertura; Busca de rede credenciada e particular; Comunicação com beneficiários e prestadores; Apoio técnico e subsídios a CESAD01; Autorização conforme critérios ANS e Saúde Caixa",
+Odonto Autorização,Jady Paes,Análise e autorização de solicitações odontológicas (SADT e internações); Priorização e abertura de guias (reembolso e credenciados); Verificação de cobertura conforme ROL ANS e Saúde Caixa; Apoio técnico e resposta a dúvidas de prestadores e beneficiários; Subsídios a CESAD01 e outras centralizadoras,
+Judiciais + NIPs,Letícia Maitê,"Análise de demandas judiciais e notificações de intermediação preliminar (NIPs); Verificação de cobertura de eventos e tratamentos; Elaboração de subsídios para CESAD06; Observância de critérios técnicos e legais (ANS, Saúde Caixa, órgãos de renome e evidências científicas)",
+Home Care,Camila Martinez,"Admissões/prorrogações de internações e assistências domiciliares; Cuidador domiciliar, bolsa de colostomia, sonda vesical; Remoções de home care; Assistência geriátrica; Escola includente; NIP, reclames, judiciais",
+Garantia de Atendimento (Busca de rede),Valéria Sa Lemos,"Busca de rede assistencial; Autorização prévia para reembolso integral (quando não há prestador credenciado); Análise de consultas, exames, cirurgias (OPME após autorização), terapias (exceto CIDs F84.x e F90), hospedagem e deslocamento; Tratativa de demandas regulatórias e legais (NIP, reclames, judiciais, autos de infração ANS)",
+Credenciamento + Termo Aditivo,Paloma,"Atualização cadastral (endereço, razão social, contatos, CNES, procedimentos, especialidades, corpo clínico, CNPJ/PF-PJ); Comunicações de suspeição de atendimento e descredenciamento; Dúvidas sobre termo aditivo, reajustes, valores, acordos em tabela; Pedidos de credenciamento e complementação de documentação",
+Negociação,Lucas Jacomassi,Negociação de pacotes e procedimentos; Pareceres técnicos para CESAD; Encaminhamento de informações de valores de mercado,
+Financeiro / Tributos,Paulo Roberto Júnior,Parametrização dos impostos ISSQN e INSS no SIAGS (cargas 7 e 9) ou rejeição; Alteração do cadastro tributário do prestador (IR); Registro de notas fiscais no SIAGS para faturamento,
+Faturamento Bruto,Lucas Ravelly,Análise de notas fiscais e conciliação no SIAGS conforme PEGs a serem faturados; Resposta a dúvidas sobre notas fiscais e PEGs não pagas,
+Reembolso,Michele Leão,Gestão de reembolsos médicos e tratamento de reclames de reembolso médico,
+Odonto Reembolso,Teonas Boff,"Gestão de reembolsos odontológicos, NIPs, reclames e casos judiciais odontológicos",
+NIP + Judicial Reembolso,Juliana Gomes,Reembolsos com NIP ou judiciais e elaboração de planilhas de reembolso da CESAD 02,
+Prévia de Reembolso + Programas,Wallace Porfírio,"Prévia de reembolso, PRM, PCD, IPT e PAI – NIPs e casos judiciais relacionados",
