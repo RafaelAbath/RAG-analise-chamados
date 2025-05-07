@@ -19,38 +19,49 @@ client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 openai = OpenAI(api_key=OPENAI_KEY)
 
 
-if client.collection_exists(collection_name=COLLECTION):
-    client.delete_collection(collection_name=COLLECTION)
+if client.collection_exists(COLLECTION):
+    client.delete_collection(COLLECTION)
 client.create_collection(
     collection_name=COLLECTION,
     vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
 )
 
 
-df = pd.read_csv("data/tecnicos_secoes.csv") 
+df = pd.read_csv("data/tecnicos_secoes.csv", encoding="utf-8-sig")
+required_cols = {"Setor", "Técnico Responsável", "Responsabilidades", "Exemplos"}
+missing = required_cols - set(df.columns)
+if missing:
+    raise RuntimeError(f"Colunas faltando no CSV: {missing}")
 
 points = []
 for idx, row in df.iterrows():
-    
     text_to_embed = (
         f"Responsabilidades: {row['Responsabilidades']}. "
         f"Exemplos: {row['Exemplos']}"
     )
-    resp = openai.embeddings.create(model=EMBED_MODEL, input=text_to_embed)
-    emb = resp.data[0].embedding
+    
+    emb_resp = openai.embeddings.create(
+        model=EMBED_MODEL,
+        input=text_to_embed
+    )
+    emb = emb_resp.data[0].embedding
+
+   
+    payload = {
+        "nome":            row["Técnico Responsável"],
+        "setor":           row["Setor"],
+        "responsabilidades": row["Responsabilidades"],
+        "exemplos":        row["Exemplos"],
+    }
 
     points.append(
-        Point(
-            id=idx,
-            vector=emb,
-            payload={
-                "nome": row["Técnico Responsável"],
-                "setor": row["Setor"],
-                "responsabilidades": row["Responsabilidades"],
-                "exemplos": row["Exemplos"],
-            }
-        )
+        Point(id=idx, vector=emb, payload=payload)
     )
 
-client.upload_records(collection_name=COLLECTION, records=points)
+
+client.upload_points(
+    collection_name=COLLECTION,
+    points=points
+)
+
 print(f"Indexados {len(points)} técnicos em '{COLLECTION}'.")
