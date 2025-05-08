@@ -107,7 +107,7 @@ async def classify_and_assign(chamado: Chamado):
         query_vector=emb,
         limit=1,
         with_payload=True,
-        filter=Filter(
+        query_filter=Filter(
             must=[FieldCondition(key="setor", match=MatchValue(value=setor_ia))]
         )
     )
@@ -160,7 +160,7 @@ async def debug_classify(chamado: Chamado):
         query_vector=emb,
         limit=1,
         with_payload=True,
-        filter=Filter(
+        query_filter=Filter(
             must=[FieldCondition(key="setor", match=MatchValue(value=setor_ia))]
         )
     )
