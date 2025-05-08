@@ -40,18 +40,14 @@ for idx, row in df.iterrows():
         f"Responsabilidades: {row['Responsabilidades']}. "
         f"Exemplos: {row['Exemplos']}"
     )
-    emb_resp = openai.embeddings.create(model=EMBED_MODEL, input=text_to_embed)
-    emb = emb_resp.data[0].embedding
-
+    emb = openai.embeddings.create(model=EMBED_MODEL, input=text_to_embed).data[0].embedding
     payload = {
-        "nome":              row["Técnico Responsável"],
-        "setor":             row["Setor"],
+        "nome":            row["Técnico Responsável"],
+        "setor":           row["Setor"],
         "responsabilidades": row["Responsabilidades"],
-        "exemplos":          row["Exemplos"],
+        "exemplos":        row["Exemplos"],
     }
-
     points.append(Point(id=idx, vector=emb, payload=payload))
 
 client.upload_points(collection_name=COLLECTION, points=points)
-
 print(f"Indexados {len(points)} técnicos em '{COLLECTION}'.")
