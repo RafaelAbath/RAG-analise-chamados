@@ -10,10 +10,8 @@ from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 
-# ─── Logging ───────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 
-# ─── Variáveis de ambiente ─────────────────────────────────────────────
 OPENAI_KEY      = os.getenv("OPENAI_API_KEY")
 FINETUNED_MODEL = os.getenv("FINETUNED_MODEL")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
@@ -22,14 +20,12 @@ QDRANT_API_KEY  = os.getenv("QDRANT_API_KEY")
 COLLECTION      = os.getenv("QDRANT_COLLECTION")
 API_KEY         = os.getenv("API_KEY")
 
-# ─── Autenticação por API Key ───────────────────────────────────────────
 api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=True)
 def get_api_key(key: str = Depends(api_key_header)):
     if key != API_KEY:
         raise HTTPException(401, "Chave de API inválida ou ausente")
     return key
 
-# ─── Carrega metadados dos setores do CSV ───────────────────────────────
 _sector_info: Dict[str, Dict[str, str]] = {}
 df_meta = pd.read_csv("data/tecnicos_secoes.csv", encoding="utf-8-sig")
 required = {"Setor", "Responsabilidades", "Exemplos"}
@@ -44,13 +40,10 @@ for _, row in df_meta.iterrows():
         "exemplos":           str(row["Exemplos"]).strip()
     }
 
-# ─── Inicializa OpenAI e Qdrant ────────────────────────────────────────
 openai = OpenAI(api_key=OPENAI_KEY)
 qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-
 app = FastAPI(title="API de RAG para Chamados")
 
-# ─── Schemas Pydantic ───────────────────────────────────────────────────
 class Chamado(BaseModel):
     titulo: str
     descricao: str
@@ -65,14 +58,11 @@ class Resposta(BaseModel):
 class RespostaDebug(Resposta):
     raw_model_response: Dict[str, Any]
 
-# ─── Endpoint /classify/ ────────────────────────────────────────────────
-@app.post(
-    "/classify/",
-    response_model=Resposta,
-    dependencies=[Depends(get_api_key)]
-)
+def clean_setor(raw: str) -> str:
+    return raw.split(":", 1)[1].strip() if ":" in raw else raw.strip()
+
+@app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
-    # 1) Finetuned define setor
     prompt = (
         "Analise o seguinte chamado e diga apenas o setor responsável:\n\n"
         f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}\n"
@@ -82,25 +72,20 @@ async def classify_and_assign(chamado: Chamado):
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0
     )
-    setor_ia = model_resp.choices[0].message.content.strip()
+    raw_sector = model_resp.choices[0].message.content.strip()
+    setor_ia = clean_setor(raw_sector)
 
-    # 2) Recupera descrições detalhadas do setor
     info = _sector_info.get(setor_ia)
     if not info:
-        raise HTTPException(500, f"Metadados do setor '{setor_ia}' não encontrados.")
+        raise HTTPException(500, f"Metadados do setor '{setor_ia}' (original: '{raw_sector}') não encontrados.")
 
-    # 3) Embedding combinando responsabilidades, exemplos e texto do chamado
     text_for_search = (
         f"Responsabilidades: {info['responsabilidades']}. "
         f"Exemplos: {info['exemplos']}. "
         f"Chamado: {chamado.titulo}. {chamado.descricao}"
     )
-    emb = openai.embeddings.create(
-        model=EMBEDDING_MODEL,
-        input=text_for_search
-    ).data[0].embedding
+    emb = openai.embeddings.create(model=EMBEDDING_MODEL, input=text_for_search).data[0].embedding
 
-    # 4) Busca vetorial **filtrada** pelo setor
     hits = qdrant.search(
         collection_name=COLLECTION,
         query_vector=emb,
@@ -116,13 +101,9 @@ async def classify_and_assign(chamado: Chamado):
     hit = hits[0]
     payload = hit.payload
 
-    # Log de divergência de setor (opcional)
     if payload["setor"].lower() != setor_ia.lower():
-        logging.warning(
-            f"Setor IA '{setor_ia}' ≠ payload '{payload['setor']}'"
-        )
+        logging.warning(f"Setor IA '{setor_ia}' ≠ payload '{payload['setor']}'")
 
-    # 5) Retorna a resposta final
     return Resposta(
         setor_ia=setor_ia,
         tecnico_id=hit.id,
@@ -131,14 +112,8 @@ async def classify_and_assign(chamado: Chamado):
         confianca=hit.score
     )
 
-# ─── Endpoint /debug-classify/ ─────────────────────────────────────────
-@app.post(
-    "/debug-classify/",
-    response_model=RespostaDebug,
-    dependencies=[Depends(get_api_key)]
-)
+@app.post("/debug-classify/", response_model=RespostaDebug, dependencies=[Depends(get_api_key)])
 async def debug_classify(chamado: Chamado):
-    # Repete a lógica de classify, mas inclui raw_model_response
     prompt = (
         "Analise o seguinte chamado e diga apenas o setor responsável:\n\n"
         f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}\n"
@@ -148,11 +123,12 @@ async def debug_classify(chamado: Chamado):
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0
     )
-    setor_ia = model_resp.choices[0].message.content.strip()
+    raw_sector = model_resp.choices[0].message.content.strip()
+    setor_ia = clean_setor(raw_sector)
 
     info = _sector_info.get(setor_ia)
     if not info:
-        raise HTTPException(500, f"Metadados do setor '{setor_ia}' não encontrados.")
+        raise HTTPException(500, f"Metadados do setor '{setor_ia}' (original: '{raw_sector}') não encontrados.")
 
     emb = openai.embeddings.create(
         model=EMBEDDING_MODEL,
@@ -179,9 +155,7 @@ async def debug_classify(chamado: Chamado):
     payload = hit.payload
 
     if payload["setor"].lower() != setor_ia.lower():
-        logging.warning(
-            f"Setor IA '{setor_ia}' ≠ payload '{payload['setor']}'"
-        )
+        logging.warning(f"Setor IA '{setor_ia}' ≠ payload '{payload['setor']}'")
 
     return RespostaDebug(
         setor_ia=setor_ia,
