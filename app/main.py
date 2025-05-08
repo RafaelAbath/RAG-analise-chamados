@@ -61,6 +61,16 @@ class RespostaDebug(Resposta):
 def clean_setor(raw: str) -> str:
     return raw.split(":", 1)[1].strip() if ":" in raw else raw.strip()
 
+def match_setor(name: str) -> str:
+    """Encontra a chave exata em _sector_info  
+       comparando substrings em lowercase."""
+    nl = name.lower()
+    for key in _sector_info:
+        kl = key.lower()
+        if kl in nl or nl in kl:
+            return key
+    return name
+
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
     prompt = (
@@ -73,11 +83,17 @@ async def classify_and_assign(chamado: Chamado):
         temperature=0.0
     )
     raw_sector = model_resp.choices[0].message.content.strip()
-    setor_ia = clean_setor(raw_sector)
+    setor_bruto = clean_setor(raw_sector)
+    setor_ajustado = match_setor(setor_bruto)
 
-    info = _sector_info.get(setor_ia)
+    info = _sector_info.get(setor_ajustado)
     if not info:
-        raise HTTPException(500, f"Metadados do setor '{setor_ia}' (original: '{raw_sector}') não encontrados.")
+        raise HTTPException(
+            500,
+            f"Metadados do setor '{setor_ajustado}' (original: '{raw_sector}') não encontrados."
+        )
+
+    setor_ia = setor_ajustado
 
     text_for_search = (
         f"Responsabilidades: {info['responsabilidades']}. "
