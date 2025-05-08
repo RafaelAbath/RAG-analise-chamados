@@ -1,6 +1,7 @@
 import os
 import logging
 from typing import Any, Dict
+from difflib import get_close_matches
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Depends
@@ -26,6 +27,7 @@ def get_api_key(key: str = Depends(api_key_header)):
         raise HTTPException(401, "Chave de API inválida ou ausente")
     return key
 
+# Carrega metadados dos setores
 _sector_info: Dict[str, Dict[str, str]] = {}
 df_meta = pd.read_csv("data/tecnicos_secoes.csv", encoding="utf-8-sig")
 required = {"Setor", "Responsabilidades", "Exemplos"}
@@ -39,6 +41,9 @@ for _, row in df_meta.iterrows():
         "responsabilidades": str(row["Responsabilidades"]).strip(),
         "exemplos":           str(row["Exemplos"]).strip()
     }
+
+# Lista de setores válidos
+ALLOWED_SECTORS = list(_sector_info.keys())
 
 openai = OpenAI(api_key=OPENAI_KEY)
 qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
@@ -59,48 +64,54 @@ class RespostaDebug(Resposta):
     raw_model_response: Dict[str, Any]
 
 def clean_setor(raw: str) -> str:
+    # remove prefixos tipo "Setor: X"
     return raw.split(":", 1)[1].strip() if ":" in raw else raw.strip()
-
-def match_setor(name: str) -> str:
-    """Encontra a chave exata em _sector_info  
-       comparando substrings em lowercase."""
-    nl = name.lower()
-    for key in _sector_info:
-        kl = key.lower()
-        if kl in nl or nl in kl:
-            return key
-    return name
 
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
-    prompt = (
-        "Analise o seguinte chamado e diga apenas o setor responsável:\n\n"
-        f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}\n"
+    # 1) Prompt com system+user roles, forçando resposta na lista de setores
+    system_msg = (
+        "Você é um roteador de chamados. Responda **APENAS** com um dos setores válidos abaixo (sem nenhum outro texto):\n"
+        + ", ".join(ALLOWED_SECTORS)
+    )
+    user_msg = (
+        f"Analise este chamado e escolha um setor:\n"
+        f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
     )
     model_resp = openai.chat.completions.create(
         model=FINETUNED_MODEL,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": system_msg},
+            {"role": "user",   "content": user_msg}
+        ],
         temperature=0.0
     )
-    raw_sector = model_resp.choices[0].message.content.strip()
-    setor_bruto = clean_setor(raw_sector)
-    setor_ajustado = match_setor(setor_bruto)
 
-    info = _sector_info.get(setor_ajustado)
-    if not info:
-        raise HTTPException(
-            500,
-            f"Metadados do setor '{setor_ajustado}' (original: '{raw_sector}') não encontrados."
-        )
+    # 2) Limpeza + fuzzy match
+    raw_sector   = model_resp.choices[0].message.content.strip()
+    setor_bruto  = clean_setor(raw_sector)
+    if setor_bruto not in _sector_info:
+        # tenta aproximar
+        matches = get_close_matches(setor_bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)
+        if not matches:
+            raise HTTPException(500, f"Setor '{setor_bruto}' não é válido.")
+        setor_ajustado = matches[0]
+    else:
+        setor_ajustado = setor_bruto
 
+    info = _sector_info[setor_ajustado]
     setor_ia = setor_ajustado
 
+    # 3) Embedding + busca filtrada
     text_for_search = (
         f"Responsabilidades: {info['responsabilidades']}. "
         f"Exemplos: {info['exemplos']}. "
         f"Chamado: {chamado.titulo}. {chamado.descricao}"
     )
-    emb = openai.embeddings.create(model=EMBEDDING_MODEL, input=text_for_search).data[0].embedding
+    emb = openai.embeddings.create(
+        model=EMBEDDING_MODEL,
+        input=text_for_search
+    ).data[0].embedding
 
     hits = qdrant.search(
         collection_name=COLLECTION,
@@ -116,7 +127,6 @@ async def classify_and_assign(chamado: Chamado):
 
     hit = hits[0]
     payload = hit.payload
-
     if payload["setor"].lower() != setor_ia.lower():
         logging.warning(f"Setor IA '{setor_ia}' ≠ payload '{payload['setor']}'")
 
