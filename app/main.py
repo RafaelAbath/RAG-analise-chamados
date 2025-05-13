@@ -64,12 +64,12 @@ class RespostaDebug(Resposta):
     raw_model_response: Dict[str, Any]
 
 def clean_setor(raw: str) -> str:
-    # remove prefixos tipo "Setor: X"
+   
     return raw.split(":", 1)[1].strip() if ":" in raw else raw.strip()
 
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
-    # 1) Prompt com system+user roles, forçando resposta na lista de setores
+    
     system_msg = (
         "Você é um roteador de chamados. Responda **APENAS** com um dos setores válidos abaixo (sem nenhum outro texto):\n"
         + ", ".join(ALLOWED_SECTORS)
@@ -87,11 +87,11 @@ async def classify_and_assign(chamado: Chamado):
         temperature=0.0
     )
 
-    # 2) Limpeza + fuzzy match
+    
     raw_sector   = model_resp.choices[0].message.content.strip()
     setor_bruto  = clean_setor(raw_sector)
     if setor_bruto not in _sector_info:
-        # tenta aproximar
+        
         matches = get_close_matches(setor_bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)
         if not matches:
             raise HTTPException(500, f"Setor '{setor_bruto}' não é válido.")
@@ -102,7 +102,7 @@ async def classify_and_assign(chamado: Chamado):
     info = _sector_info[setor_ajustado]
     setor_ia = setor_ajustado
 
-    # 3) Embedding + busca filtrada
+    
     text_for_search = (
         f"Responsabilidades: {info['responsabilidades']}. "
         f"Exemplos: {info['exemplos']}. "
