@@ -1,8 +1,9 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import logging
 from typing import Any, Dict
 from difflib import get_close_matches
-
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security.api_key import APIKeyHeader
@@ -10,6 +11,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -36,8 +38,8 @@ if missing:
     raise RuntimeError(f"Colunas faltando no CSV: {missing}")
 
 for _, row in df_meta.iterrows():
-    setor = row["Setor"]
-    _sector_info[setor] = {
+    s = row["Setor"]
+    _sector_info[s] = {
         "responsabilidades": str(row["Responsabilidades"]).strip(),
         "exemplos":           str(row["Exemplos"]).strip()
     }
@@ -64,55 +66,59 @@ class RespostaDebug(Resposta):
     raw_model_response: Dict[str, Any]
 
 def clean_setor(raw: str) -> str:
-   
     return raw.split(":", 1)[1].strip() if ":" in raw else raw.strip()
 
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
-    
-    system_msg = (
-        "Você é um roteador de chamados. Responda **APENAS** com um dos setores válidos abaixo (sem nenhum outro texto):\n"
-        + ", ".join(ALLOWED_SECTORS)
-    )
-    user_msg = (
-        f"Analise este chamado e escolha um setor:\n"
-        f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
-    )
-    model_resp = openai.chat.completions.create(
-        model=FINETUNED_MODEL,
-        messages=[
-            {"role": "system", "content": system_msg},
-            {"role": "user",   "content": user_msg}
-        ],
-        temperature=0.0
-    )
+    full_text = f"{chamado.titulo} {chamado.descricao}".lower()
 
-    
-    raw_sector   = model_resp.choices[0].message.content.strip()
-    setor_bruto  = clean_setor(raw_sector)
-    if setor_bruto not in _sector_info:
-        
-        matches = get_close_matches(setor_bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)
-        if not matches:
-            raise HTTPException(500, f"Setor '{setor_bruto}' não é válido.")
-        setor_ajustado = matches[0]
+    # 0) keyword routing: se mencionar "opme", já escolhe esse setor
+    if "opme" in full_text:
+        setor_ia = "OPME"
+        model_resp = None
     else:
-        setor_ajustado = setor_bruto
+        # 1) faz a chamada ao finetuned com system+user prompt
+        system_msg = (
+            "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
+            + ", ".join(ALLOWED_SECTORS)
+        )
+        user_msg = (
+            f"Analise este chamado e escolha um setor:\n"
+            f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
+        )
+        model_resp = openai.chat.completions.create(
+            model=FINETUNED_MODEL,
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user",   "content": user_msg}
+            ],
+            temperature=0.0
+        )
+        raw_sector  = model_resp.choices[0].message.content.strip()
+        bruto       = clean_setor(raw_sector)
+        if bruto not in _sector_info:
+            # fuzzy fallback
+            matches = get_close_matches(bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)
+            if not matches:
+                raise HTTPException(500, f"Setor '{bruto}' não é válido.")
+            setor_ia = matches[0]
+        else:
+            setor_ia = bruto
 
-    info = _sector_info[setor_ajustado]
-    setor_ia = setor_ajustado
+    # 2) pega metadados do setor selecionado
+    info = _sector_info.get(setor_ia)
+    if not info:
+        raise HTTPException(500, f"Sem metadados para setor '{setor_ia}'.")
 
-    
+    # 3) cria embedding combinando responsabilidades/exemplos e texto do chamado
     text_for_search = (
         f"Responsabilidades: {info['responsabilidades']}. "
         f"Exemplos: {info['exemplos']}. "
         f"Chamado: {chamado.titulo}. {chamado.descricao}"
     )
-    emb = openai.embeddings.create(
-        model=EMBEDDING_MODEL,
-        input=text_for_search
-    ).data[0].embedding
+    emb = openai.embeddings.create(model=EMBEDDING_MODEL, input=text_for_search).data[0].embedding
 
+    # 4) busca vetorial filtrada pelo próprio setor
     hits = qdrant.search(
         collection_name=COLLECTION,
         query_vector=emb,
