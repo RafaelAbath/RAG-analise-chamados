@@ -1,4 +1,5 @@
 services:
+  # Rodar o Qdrant de forma local se quiser
   # qdrant:
   #   image: qdrant/qdrant:latest
   #   ports:
@@ -12,7 +13,7 @@ services:
       - .env
     ports:
       - "8000:8000"
-    # garante que o CSV esteja em /app/data/ dentro do container
+    
     volumes:
       - ./data:/app/data
 
