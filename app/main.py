@@ -5,6 +5,7 @@ import logging
 from typing import Any, Dict
 from difflib import get_close_matches
 import pandas as pd
+from router_rules import route_by_keywords
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
@@ -13,8 +14,10 @@ from qdrant_client import QdrantClient
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 
 
+
 logging.basicConfig(level=logging.INFO)
 
+COLLECTION_NIP = os.getenv("QDRANT_COLLECTION_NIP")
 OPENAI_KEY      = os.getenv("OPENAI_API_KEY")
 FINETUNED_MODEL = os.getenv("FINETUNED_MODEL")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
@@ -29,7 +32,7 @@ def get_api_key(key: str = Depends(api_key_header)):
         raise HTTPException(401, "Chave de API inválida ou ausente")
     return key
 
-# Carrega metadados dos setores
+
 _sector_info: Dict[str, Dict[str, str]] = {}
 df_meta = pd.read_csv("data/tecnicos_secoes.csv", encoding="utf-8-sig")
 required = {"Setor", "Responsabilidades", "Exemplos"}
@@ -44,7 +47,7 @@ for _, row in df_meta.iterrows():
         "exemplos":           str(row["Exemplos"]).strip()
     }
 
-# Lista de setores válidos
+
 ALLOWED_SECTORS = list(_sector_info.keys())
 
 openai = OpenAI(api_key=OPENAI_KEY)
@@ -68,16 +71,23 @@ class RespostaDebug(Resposta):
 def clean_setor(raw: str) -> str:
     return raw.split(":", 1)[1].strip() if ":" in raw else raw.strip()
 
+
+def collection_for(setor: str) -> str:
+    lower = setor.lower()
+    gatilhos = ("nip", "reclame", "ans", "judicial")
+    return COLLECTION_NIP if any(k in setor.lower() for k in ("nip", "reclame")) else COLLECTION
+
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
     full_text = f"{chamado.titulo} {chamado.descricao}".lower()
 
-    # 0) keyword routing: se mencionar "opme", já escolhe esse setor
-    if "opme" in full_text:
-        setor_ia = "OPME"
+    setor_ia = route_by_keywords(full_text)
+
+    if setor_ia:
+
         model_resp = None
     else:
-        # 1) faz a chamada ao finetuned com system+user prompt
+
         system_msg = (
             "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
             + ", ".join(ALLOWED_SECTORS)
@@ -119,15 +129,17 @@ async def classify_and_assign(chamado: Chamado):
     emb = openai.embeddings.create(model=EMBEDDING_MODEL, input=text_for_search).data[0].embedding
 
     # 4) busca vetorial filtrada pelo próprio setor
+    collection = collection_for(setor_ia)
+
     hits = qdrant.search(
-        collection_name=COLLECTION,
-        query_vector=emb,
-        limit=1,
-        with_payload=True,
-        query_filter=Filter(
-            must=[FieldCondition(key="setor", match=MatchValue(value=setor_ia))]
-        )
-    )
+    collection_name=collection,
+    query_vector=emb,
+    limit=1,
+    with_payload=True,
+    query_filter=Filter(
+        must=[FieldCondition(key="setor", match=MatchValue(value=setor_ia))]
+    ),
+)
     if not hits:
         raise HTTPException(404, f"Nenhum técnico encontrado para o setor {setor_ia}.")
 
@@ -171,15 +183,17 @@ async def debug_classify(chamado: Chamado):
         )
     ).data[0].embedding
 
+    collection = collection_for(setor_ia)
+
     hits = qdrant.search(
-        collection_name=COLLECTION,
-        query_vector=emb,
-        limit=1,
-        with_payload=True,
-        query_filter=Filter(
-            must=[FieldCondition(key="setor", match=MatchValue(value=setor_ia))]
-        )
-    )
+    collection_name=collection,
+    query_vector=emb,
+    limit=1,
+    with_payload=True,
+    query_filter=Filter(
+        must=[FieldCondition(key="setor", match=MatchValue(value=setor_ia))]
+    ),
+)
     if not hits:
         raise HTTPException(404, f"Nenhum técnico encontrado para o setor {setor_ia}.")
 
