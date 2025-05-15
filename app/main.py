@@ -107,7 +107,7 @@ async def classify_and_assign(chamado: Chamado):
         raw_sector  = model_resp.choices[0].message.content.strip()
         bruto       = clean_setor(raw_sector)
         if bruto not in _sector_info:
-            # fuzzy fallback
+            
             matches = get_close_matches(bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)
             if not matches:
                 raise HTTPException(500, f"Setor '{bruto}' não é válido.")
@@ -115,12 +115,12 @@ async def classify_and_assign(chamado: Chamado):
         else:
             setor_ia = bruto
 
-    # 2) pega metadados do setor selecionado
+    
     info = _sector_info.get(setor_ia)
     if not info:
         raise HTTPException(500, f"Sem metadados para setor '{setor_ia}'.")
 
-    # 3) cria embedding combinando responsabilidades/exemplos e texto do chamado
+    
     text_for_search = (
         f"Responsabilidades: {info['responsabilidades']}. "
         f"Exemplos: {info['exemplos']}. "
@@ -128,7 +128,7 @@ async def classify_and_assign(chamado: Chamado):
     )
     emb = openai.embeddings.create(model=EMBEDDING_MODEL, input=text_for_search).data[0].embedding
 
-    # 4) busca vetorial filtrada pelo próprio setor
+    
     collection = collection_for(setor_ia)
 
     hits = qdrant.search(
