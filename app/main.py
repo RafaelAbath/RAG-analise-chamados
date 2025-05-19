@@ -90,7 +90,9 @@ async def classify_and_assign(chamado: Chamado):
 
         system_msg = (
             "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
-            + ", ".join(ALLOWED_SECTORS)
+            + ", ".join(ALLOWED_SECTORS) + "\n\nRegras específicas:\n"
+            "- Se o caso envolver beneficiário, coparticipação ou PEG/glosa, escolha **Faturamento**.\n"
+            "- Se tratar de nota fiscal, impostos ou cadastro de prestador, escolha **Financeiro / Tributos**."
         )
         user_msg = (
             f"Analise este chamado e escolha um setor:\n"
