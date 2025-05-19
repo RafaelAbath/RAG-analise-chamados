@@ -15,47 +15,46 @@ from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 
 logging.basicConfig(level=logging.INFO)
 
+# ─────────── Configurações ───────────
+COLLECTION_NIP     = os.getenv("QDRANT_COLLECTION_NIP", "nip_reclames")
+COLLECTION         = os.getenv("QDRANT_COLLECTION",     "tecnicos")
+OPENAI_KEY         = os.getenv("OPENAI_API_KEY")
+FINETUNED_MODEL    = os.getenv("FINETUNED_MODEL")
+EMBEDDING_MODEL    = os.getenv("EMBEDDING_MODEL")
+QDRANT_URL         = os.getenv("QDRANT_URL")
+QDRANT_API_KEY     = os.getenv("QDRANT_API_KEY")
+API_KEY            = os.getenv("API_KEY")
 
-COLLECTION_NIP = os.getenv("QDRANT_COLLECTION_NIP", "nip_reclames")
-COLLECTION     = os.getenv("QDRANT_COLLECTION",     "tecnicos")
-OPENAI_KEY     = os.getenv("OPENAI_API_KEY")
-FINETUNED_MODEL= os.getenv("FINETUNED_MODEL")
-EMBEDDING_MODEL= os.getenv("EMBEDDING_MODEL")
-QDRANT_URL     = os.getenv("QDRANT_URL")
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
-API_KEY        = os.getenv("API_KEY")
-
-
+# Autenticação via header
 api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=True)
 def get_api_key(key: str = Depends(api_key_header)):
     if key != API_KEY:
         raise HTTPException(401, "Chave de API inválida ou ausente")
     return key
 
-
-_sector_info: Dict[str, Dict[str, str]] = {}
+# ───── Carrega metadados dos setores ─────
 df_meta = pd.read_csv("data/tecnicos_secoes.csv", encoding="utf-8-sig")
 required = {"Setor", "Responsabilidades", "Exemplos"}
 missing = required - set(df_meta.columns)
 if missing:
     raise RuntimeError(f"Colunas faltando no CSV: {missing}")
 
-for _, row in df_meta.iterrows():
-    s = row["Setor"]
-    _sector_info[s] = {
+_sector_info: Dict[str, Dict[str, str]] = {
+    row["Setor"]: {
         "responsabilidades": str(row["Responsabilidades"]).strip(),
         "exemplos":           str(row["Exemplos"]).strip()
     }
-
+    for _, row in df_meta.iterrows()
+}
 ALLOWED_SECTORS = list(_sector_info.keys())
 
-
+# ─── Clientes OpenAI e Qdrant ───
 openai = OpenAI(api_key=OPENAI_KEY)
 qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
 app = FastAPI(title="API de RAG para Chamados")
 
-
+# ─────────── Models ───────────
 class Chamado(BaseModel):
     titulo: str
     descricao: str
@@ -70,7 +69,7 @@ class Resposta(BaseModel):
 class RespostaDebug(Resposta):
     raw_model_response: Dict[str, Any]
 
-
+# ─────────── Helpers ───────────
 def clean_setor(raw: str) -> str:
     return raw.split(":", 1)[1].strip() if ":" in raw else raw.strip()
 
@@ -78,50 +77,50 @@ def collection_for(setor: str) -> str:
     gatilhos = ("nip", "reclame", "ans", "judicial")
     return COLLECTION_NIP if any(k in setor.lower() for k in gatilhos) else COLLECTION
 
-
+# ─────────── Endpoints ───────────
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
     full_text = f"{chamado.titulo} {chamado.descricao}".lower()
-    
-    setor_ia = route_by_keywords(full_text)
-    if setor_ia:
-        model_resp = None
-    else:
-        system_msg = (
-        "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
-        + ", ".join(ALLOWED_SECTORS)
-    )
-    user_msg = f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
-    model_resp = openai.chat.completions.create(
-        model=FINETUNED_MODEL,
-        messages=[
-            {"role": "system", "content": system_msg},
-            {"role": "user",   "content": user_msg}
-        ],
-        temperature=0.0
-    )
-    raw_sector = model_resp.choices[0].message.content.strip()
-    bruto      = clean_setor(raw_sector)
-    if bruto not in _sector_info:
-        matches = get_close_matches(bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)
-        if not matches:
-            raise HTTPException(500, f"Setor '{bruto}' não é válido.")
-        setor_ia = matches[0]
-    else:
-        setor_ia = bruto
 
-    
+    # 1) Pré-roteamento NIP/OPME/HC
+    setor_ia = route_by_keywords(full_text)
+
+    # 2) Se não houver pré-roteamento, chama o LLM finetuned
+    if not setor_ia:
+        system_msg = (
+            "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
+            + ", ".join(ALLOWED_SECTORS)
+        )
+        user_msg = f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
+        model_resp = openai.chat.completions.create(
+            model=FINETUNED_MODEL,
+            messages=[
+                {"role": "system",  "content": system_msg},
+                {"role": "user",    "content": user_msg}
+            ],
+            temperature=0.0
+        )
+        raw_sector = model_resp.choices[0].message.content.strip()
+        bruto      = clean_setor(raw_sector)
+        if bruto not in _sector_info:
+            matches = get_close_matches(bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)
+            if not matches:
+                raise HTTPException(500, f"Setor '{bruto}' não é válido.")
+            setor_ia = matches[0]
+        else:
+            setor_ia = bruto
+
+    # 3) Refinamento financeiro (apenas se veio Faturamento ou Financeiro)
     if setor_ia in ("Faturamento", "Financeiro / Tributos"):
         override = override_finance(full_text)
         if override:
             setor_ia = override
 
-    
+    # 4) Monta embedding + busca vetorial
     info = _sector_info.get(setor_ia)
     if not info:
         raise HTTPException(500, f"Sem metadados para setor '{setor_ia}'.")
 
-    
     text_for_search = (
         f"Responsabilidades: {info['responsabilidades']}. "
         f"Exemplos: {info['exemplos']}. "
