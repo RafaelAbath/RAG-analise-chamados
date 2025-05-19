@@ -1,6 +1,8 @@
 import re
 
 KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
+    (r"\b(contato|whatsapp|e-?mail)\b",
+     "Garantia de Atendimento (Busca de rede)"),
     # 1) NIP/Judiciais + OPME
     (r"\b(opme)\b.*\b(nip|ans|judicial|reclame)s?\b"
      r"|\b(nip|ans|judicial|reclame)s?\b.*\b(opme)\b",
