@@ -12,7 +12,8 @@ KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
     (r"\b(home\s*care|hc)\b.*\b(nip|ans|judicial|reclame)s?\b"
      r"|\b(nip|ans|judicial|reclame)s?\b.*\b(home\s*care|hc)\b",
      "NIP Reclames e judiciais HC"),
-
+    (r"\b(cpap|aparelho|lente|catarata|pr[oô]tese|endopr[oô]tese)\b",
+     "OPME"),
     # 5) OPME puro
     (r"\bopme\b", "OPME"),
 
