@@ -5,7 +5,7 @@ import logging
 from typing import Any, Dict
 from difflib import get_close_matches
 import pandas as pd
-from router_rules import override_finance
+from router_rules import route_by_keywords, override_finance
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
@@ -82,9 +82,12 @@ def collection_for(setor: str) -> str:
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
     full_text = f"{chamado.titulo} {chamado.descricao}".lower()
-
     
-    system_msg = (
+    setor_ia = route_by_keywords(full_text)
+    if setor_ia:
+        model_resp = None
+    else:
+        system_msg = (
         "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
         + ", ".join(ALLOWED_SECTORS)
     )
