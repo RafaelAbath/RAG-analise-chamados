@@ -33,6 +33,7 @@ def get_api_key(key: str = Depends(api_key_header)):
         raise HTTPException(401, "Chave de API inválida ou ausente")
     return key
 
+# Carrega metadados dos setores
 df_meta = pd.read_csv("data/tecnicos_secoes.csv", encoding="utf-8-sig")
 required = {"Setor", "Responsabilidades", "Exemplos"}
 missing = required - set(df_meta.columns)
@@ -89,10 +90,19 @@ def collection_for(setor: str, classificacao: str|None) -> str:
 async def classify_and_assign(chamado: Chamado):
     full_text = f"{chamado.titulo} {chamado.descricao}".lower()
 
-    # 0) pré-roteamento por keywords
-    setor_ia = route_by_keywords(full_text)
+    # 0) pré-roteamento baseado em classificacao
+    setor_ia: str | None = None
+    if chamado.classificacao:
+        class_lower = chamado.classificacao.lower()
+        if any(term in class_lower for term in ("agendamento | garantia de atendimento", "reembolso integral")):
+            # Mapeia para o setor completo definido em _sector_info
+            setor_ia = next((s for s in ALLOWED_SECTORS if "garantia de atendimento" in s.lower()), "Garantia de Atendimento")
 
-    # 1) fallback para finetuned se não roteou
+    # 1) pré-roteamento por palavras-chave, se não foi definido pelo classification
+    if not setor_ia:
+        setor_ia = route_by_keywords(full_text)
+
+    # 2) fallback para modelo finetuned se ainda não roteou
     if not setor_ia:
         system_msg = (
             "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
@@ -114,17 +124,18 @@ async def classify_and_assign(chamado: Chamado):
         else:
             setor_ia = bruto
 
-    # 2) override financeiro se aplicável
+    # 3) override financeiro se aplicável
     if setor_ia in ("Faturamento","Financeiro / Tributos"):
         ov = override_finance(full_text)
         if ov:
             setor_ia = ov
 
+    # Recupera metadados do setor
     info = _sector_info.get(setor_ia)
     if not info:
         raise HTTPException(500, f"Sem metadados para setor '{setor_ia}'.")
 
-    # 3) embedding + busca vetorial na collection apropriada
+    # 4) construção do embedding e busca vetorial
     txt = (
         f"Responsabilidades: {info['responsabilidades']}. "
         f"Exemplos: {info['exemplos']}. "
