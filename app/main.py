@@ -94,11 +94,31 @@ async def classify_and_assign(chamado: Chamado):
     setor_ia: str | None = None
     if chamado.classificacao:
         class_lower = chamado.classificacao.lower()
-        if any(term in class_lower for term in ("agendamento | garantia de atendimento", "reembolso integral")):
-            # Mapeia para o setor completo definido em _sector_info
-            setor_ia = next((s for s in ALLOWED_SECTORS if "garantia de atendimento" in s.lower()), "Garantia de Atendimento")
+        # Pré-roteamento OPME: requer ao menos 3 termos específicos
+        opme_terms = [
+            "credenciado ativo",
+            "manutenção de contrato",
+            "autorizacao previa",
+            "senhas",
+            "guias",
+            "revisao de ap negada",
+            "revisão de ap negada",
+            "sobre ap em andamento",
+            "tratar pedido de revisao",
+            "tratar solicitacao de prioridade"
+        ]
+        if sum(1 for term in opme_terms if term in class_lower) >= 3:
+            setor_ia = next((s for s in ALLOWED_SECTORS if "opme" in s.lower()), "OPME")
+        # Pré-roteamento Garantia de Atendimento
+        elif any(term in class_lower for term in (
+            "agendamento",
+            "garantia de atendimento",
+            "reembolso integral"
+        )):
+            setor_ia = next((s for s in ALLOWED_SECTORS if "garantia de atendimento" in s.lower()),
+                             "Garantia de Atendimento")
 
-    # 1) pré-roteamento por palavras-chave, se não foi definido pelo classification
+    # 1) pré-roteamento por palavras-chave, se não foi definido pela classificacao
     if not setor_ia:
         setor_ia = route_by_keywords(full_text)
 

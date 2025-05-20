@@ -15,7 +15,7 @@ KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
     (r"\b(cpap|aparelho|lente|catarata|pr[oô]tese|endopr[oô]tese)\b",
      "OPME"),
     # 5) OPME puro
-    (r"\bopme|materiais\b", "OPME"),
+    (r"\bopme|materiais|canula\b", "OPME"),
 
     # 6) ANS / NIP genérico
     (r"\b(ans|nip)\b", "Judiciais + NIPs"),
