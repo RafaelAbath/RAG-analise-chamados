@@ -13,7 +13,7 @@ from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 
-# Importa apenas as regras de roteamento e override
+
 from router_rules import route_by_keywords, override_finance
 
 logging.basicConfig(level=logging.INFO)
@@ -35,7 +35,7 @@ def get_api_key(key: str = Depends(api_key_header)):
         raise HTTPException(401, "Chave de API inválida ou ausente")
     return key
 
-# Carrega metadados dos setores
+
 df_meta = pd.read_csv("data/tecnicos_secoes.csv", encoding="utf-8-sig")
 required = {"Setor", "Responsabilidades", "Exemplos"}
 missing = required - set(df_meta.columns)
@@ -92,15 +92,15 @@ def collection_for(setor: str, classificacao: str|None) -> str:
 async def classify_and_assign(chamado: Chamado):
     full_text = f"{chamado.titulo} {chamado.descricao}".lower()
 
-    # 0) pré-roteamento baseado em classificacao
+    
     setor_ia: str | None = None
     if chamado.classificacao:
         raw_class = chamado.classificacao
-        # normaliza texto: remove acentos e pontuacao, converte para ascii minusculo
+        
         norm_class = unicodedata.normalize('NFKD', raw_class)
         norm_class = norm_class.encode('ascii', 'ignore').decode('ascii').lower()
         norm_class = re.sub(r'[^a-z0-9\s]', ' ', norm_class)
-        # padrões OPME em ASCII
+        
         opme_patterns = [
             'credenciado ativo',
             'manutencao de contrato',
@@ -115,19 +115,19 @@ async def classify_and_assign(chamado: Chamado):
         opme_count = sum(1 for pat in opme_patterns if pat in norm_class)
         logging.info(f"OPME classification count: {opme_count} for raw '{raw_class}'")
         if opme_count >= 3:
-            # seleciona exatamente o setor OPME
+            
             setor_ia = next((s for s in ALLOWED_SECTORS if s.lower() == 'opme'), 'OPME')
         else:
-            # verifica Garantia de Atendimento
+            
             ga_patterns = ['agendamento', 'garantia de atendimento', 'reembolso integral']
             if any(pat in norm_class for pat in ga_patterns):
                 setor_ia = next((s for s in ALLOWED_SECTORS if 'garantia de atendimento' in s.lower()), 'Garantia de Atendimento')
 
-    # 1) pré-roteamento por palavras-chave, se não foi definido pela classificacao
+    
     if not setor_ia:
         setor_ia = route_by_keywords(full_text)
 
-    # 2) fallback para modelo finetuned se ainda não roteou
+    
     if not setor_ia:
         system_msg = (
             "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
@@ -148,18 +148,18 @@ async def classify_and_assign(chamado: Chamado):
         else:
             setor_ia = bruto
 
-    # 3) override financeiro se aplicável
+    
     if setor_ia in ("Faturamento", "Financeiro / Tributos"):
         ov = override_finance(full_text)
         if ov:
             setor_ia = ov
 
-    # Recupera metadados do setor
+    
     info = _sector_info.get(setor_ia)
     if not info:
         raise HTTPException(500, f"Sem metadados para setor '{setor_ia}'.")
 
-    # 4) construção do embedding e busca vetorial
+    
     txt = (
         f"Responsabilidades: {info['responsabilidades']}. "
         f"Exemplos: {info['exemplos']}. "
@@ -190,7 +190,7 @@ async def classify_and_assign(chamado: Chamado):
         confianca=hit.score
     )
 
-# ───── endpoint debug ───────────────────────────────────────────────────
+
 @app.post("/debug-classify/", response_model=RespostaDebug, dependencies=[Depends(get_api_key)])
 async def debug_classify(chamado: Chamado):
     resp = openai.chat.completions.create(

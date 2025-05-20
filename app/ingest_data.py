@@ -6,7 +6,7 @@ from openai import OpenAI
 
 Point = namedtuple("Point", ["id", "vector", "payload"])
 
-# ── Variáveis de ambiente ─────────────────────────────────────────────
+
 QDRANT_URL  = os.getenv("QDRANT_URL")
 QDRANT_KEY  = os.getenv("QDRANT_API_KEY")
 COLL_DEFAULT = os.getenv("QDRANT_COLLECTION",        "tecnicos")
@@ -19,7 +19,7 @@ OPENAI_KEY   = os.getenv("OPENAI_API_KEY")
 client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_KEY)
 openai  = OpenAI(api_key=OPENAI_KEY)
 
-# grupo de setores → coleção
+
 NIP_KEYS = ("nip", "reclame")
 AUT_SETS = {
     "Autorização",
