@@ -1,5 +1,7 @@
 import os
 import logging
+import re
+import unicodedata
 from typing import Any, Dict
 from difflib import get_close_matches
 
@@ -93,30 +95,33 @@ async def classify_and_assign(chamado: Chamado):
     # 0) pré-roteamento baseado em classificacao
     setor_ia: str | None = None
     if chamado.classificacao:
-        class_lower = chamado.classificacao.lower()
-        # Pré-roteamento OPME: requer ao menos 3 termos específicos
-        opme_terms = [
-            "credenciado ativo",
-            "manutenção de contrato",
-            "autorizacao previa",
-            "senhas",
-            "guias",
-            "revisao de ap negada",
-            "revisão de ap negada",
-            "sobre ap em andamento",
-            "tratar pedido de revisao",
-            "tratar solicitacao de prioridade"
+        raw_class = chamado.classificacao
+        # normaliza texto: remove acentos e pontuacao, converte para ascii minusculo
+        norm_class = unicodedata.normalize('NFKD', raw_class)
+        norm_class = norm_class.encode('ascii', 'ignore').decode('ascii').lower()
+        norm_class = re.sub(r'[^a-z0-9\s]', ' ', norm_class)
+        # padrões OPME em ASCII
+        opme_patterns = [
+            'credenciado ativo',
+            'manutencao de contrato',
+            'autorizacao previa',
+            'senhas',
+            'guias',
+            'revisao de ap negada',
+            'sobre ap em andamento',
+            'tratar pedido de revisao',
+            'tratar solicitacao de prioridade'
         ]
-        if sum(1 for term in opme_terms if term in class_lower) >= 3:
-            setor_ia = next((s for s in ALLOWED_SECTORS if "opme" in s.lower()), "OPME")
-        # Pré-roteamento Garantia de Atendimento
-        elif any(term in class_lower for term in (
-            "agendamento",
-            "garantia de atendimento",
-            "reembolso integral"
-        )):
-            setor_ia = next((s for s in ALLOWED_SECTORS if "garantia de atendimento" in s.lower()),
-                             "Garantia de Atendimento")
+        opme_count = sum(1 for pat in opme_patterns if pat in norm_class)
+        logging.info(f"OPME classification count: {opme_count} for raw '{raw_class}'")
+        if opme_count >= 3:
+            # seleciona exatamente o setor OPME
+            setor_ia = next((s for s in ALLOWED_SECTORS if s.lower() == 'opme'), 'OPME')
+        else:
+            # verifica Garantia de Atendimento
+            ga_patterns = ['agendamento', 'garantia de atendimento', 'reembolso integral']
+            if any(pat in norm_class for pat in ga_patterns):
+                setor_ia = next((s for s in ALLOWED_SECTORS if 'garantia de atendimento' in s.lower()), 'Garantia de Atendimento')
 
     # 1) pré-roteamento por palavras-chave, se não foi definido pela classificacao
     if not setor_ia:
@@ -131,8 +136,7 @@ async def classify_and_assign(chamado: Chamado):
         user_msg = f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
         resp = openai.chat.completions.create(
             model=FINETUNED_MODEL,
-            messages=[{"role":"system","content":system_msg},
-                      {"role":"user","content":user_msg}],
+            messages=[{"role":"system","content":system_msg}, {"role":"user","content":user_msg}],
             temperature=0.0
         )
         bruto = clean_setor(resp.choices[0].message.content.strip())
@@ -145,7 +149,7 @@ async def classify_and_assign(chamado: Chamado):
             setor_ia = bruto
 
     # 3) override financeiro se aplicável
-    if setor_ia in ("Faturamento","Financeiro / Tributos"):
+    if setor_ia in ("Faturamento", "Financeiro / Tributos"):
         ov = override_finance(full_text)
         if ov:
             setor_ia = ov
@@ -168,9 +172,7 @@ async def classify_and_assign(chamado: Chamado):
         query_vector=vec,
         limit=1,
         with_payload=True,
-        query_filter=Filter(
-            must=[FieldCondition(key="setor", match=MatchValue(value=setor_ia))]
-        ),
+        query_filter=Filter(must=[FieldCondition(key="setor", match=MatchValue(value=setor_ia))]),
     )
     if not hits:
         raise HTTPException(404, f"Nenhum técnico encontrado para o setor {setor_ia}.")
@@ -191,19 +193,13 @@ async def classify_and_assign(chamado: Chamado):
 # ───── endpoint debug ───────────────────────────────────────────────────
 @app.post("/debug-classify/", response_model=RespostaDebug, dependencies=[Depends(get_api_key)])
 async def debug_classify(chamado: Chamado):
-    # reaproveita lógica principal, mas devolve raw_model_response
     resp = openai.chat.completions.create(
         model=FINETUNED_MODEL,
-        messages=[{"role": "user",
-                   "content": f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"}],
+        messages=[{"role": "user", "content": f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"}],
         temperature=0.0,
     )
-    bruto    = clean_setor(resp.choices[0].message.content.strip())
-    setor_ia = bruto if bruto in _sector_info else get_close_matches(
-        bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)[0]
-
-    setor_ia = refine_autorizacao(setor_ia, (chamado.titulo + " " + chamado.descricao).lower(),
-                                  chamado.classificacao)
+    bruto = clean_setor(resp.choices[0].message.content.strip())
+    setor_ia = bruto if bruto in _sector_info else get_close_matches(bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)[0]
 
     info = _sector_info[setor_ia]
     emb = openai.embeddings.create(
@@ -214,7 +210,7 @@ async def debug_classify(chamado: Chamado):
     ).data[0].embedding
 
     coll = collection_for(setor_ia, chamado.classificacao)
-    hit  = qdrant.search(
+    hit = qdrant.search(
         collection_name=coll,
         query_vector=emb,
         limit=1,
