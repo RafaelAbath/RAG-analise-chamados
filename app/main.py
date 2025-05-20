@@ -11,6 +11,9 @@ from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 
+# Importa apenas as regras de roteamento e override
+from router_rules import route_by_keywords, override_finance
+
 logging.basicConfig(level=logging.INFO)
 
 COLLECTION_NIP  = os.getenv("QDRANT_COLLECTION_NIP", "nip_reclames")
@@ -43,7 +46,6 @@ _sector_info: Dict[str, Dict[str, str]] = {
     }
     for _, row in df_meta.iterrows()
 }
-
 ALLOWED_SECTORS = list(_sector_info.keys())
 
 openai = OpenAI(api_key=OPENAI_KEY)
@@ -70,32 +72,27 @@ def clean_setor(raw: str) -> str:
 
 def collection_for(setor: str, classificacao: str|None) -> str:
     s = setor.lower()
-    # se chegou via classificação explícita "autorizacao_geral"
     if classificacao and classificacao.lower() == "autorizacao_geral":
         return COLL_AUT
-    # sempre NIP/Judiciais → coleção de NIP
-    for k in ("nip","reclame","ans","judicial"):
-        if k in s:
-            return COLLECTION_NIP
-    # agora, todos os setores de autorização geral
+    if any(k in s for k in ("nip","ans","judicial","reclame")):
+        return COLLECTION_NIP
     if setor in (
         "Autorização",
         "Medicamento",
         "OPME",
-        "Garantia de Atendimento (Busca de rede)"
+        "Garantia de Atendimento (Busca de rede)",
     ):
         return COLL_AUT
-    # caso contrário, collection default
     return COLLECTION
 
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
     full_text = f"{chamado.titulo} {chamado.descricao}".lower()
 
-    # 0) pré-roteamento por keywords (OPME, NIP, HC…)
+    # 0) pré-roteamento por keywords
     setor_ia = route_by_keywords(full_text)
 
-    # 1) se não roteou, pergunta ao modelo finetuned
+    # 1) fallback para finetuned se não roteou
     if not setor_ia:
         system_msg = (
             "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
@@ -104,41 +101,36 @@ async def classify_and_assign(chamado: Chamado):
         user_msg = f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
         resp = openai.chat.completions.create(
             model=FINETUNED_MODEL,
-            messages=[
-                {"role":"system","content":system_msg},
-                {"role":"user","content":user_msg}
-            ],
+            messages=[{"role":"system","content":system_msg},
+                      {"role":"user","content":user_msg}],
             temperature=0.0
         )
-        raw = resp.choices[0].message.content.strip()
-        bruto = clean_setor(raw)
+        bruto = clean_setor(resp.choices[0].message.content.strip())
         if bruto not in _sector_info:
-            # fallback fuzzy
-            matches = get_close_matches(bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)
-            if not matches:
+            matchs = get_close_matches(bruto, ALLOWED_SECTORS, n=1, cutoff=0.6)
+            if not matchs:
                 raise HTTPException(500, f"Setor '{bruto}' não é válido.")
-            setor_ia = matches[0]
+            setor_ia = matchs[0]
         else:
             setor_ia = bruto
 
-    # 2) refinamento financeiro (opcional)
+    # 2) override financeiro se aplicável
     if setor_ia in ("Faturamento","Financeiro / Tributos"):
         ov = override_finance(full_text)
         if ov:
             setor_ia = ov
 
-    # 3) busca metadados
     info = _sector_info.get(setor_ia)
     if not info:
         raise HTTPException(500, f"Sem metadados para setor '{setor_ia}'.")
 
-    # 4) embedding + search na collection correta
-    texto = (
+    # 3) embedding + busca vetorial na collection apropriada
+    txt = (
         f"Responsabilidades: {info['responsabilidades']}. "
         f"Exemplos: {info['exemplos']}. "
         f"Chamado: {chamado.titulo}. {chamado.descricao}"
     )
-    vec = openai.embeddings.create(model=EMBEDDING_MODEL, input=texto).data[0].embedding
+    vec = openai.embeddings.create(model=EMBEDDING_MODEL, input=txt).data[0].embedding
     coll = collection_for(setor_ia, chamado.classificacao)
     hits = qdrant.search(
         collection_name=coll,
