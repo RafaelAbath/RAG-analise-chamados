@@ -28,13 +28,9 @@ AUT_SETS = {
     "Garantia de Atendimento (Busca de rede)",
 }
 
-def choose_collection(setor: str) -> str:
-    s = setor.lower()
-    if any(k in s for k in NIP_KEYS):
-        return COLL_NIP
-    if setor in AUT_SETS:
-        return COLL_AUT
-    return COLL_DEFAULT
+def choose_collection(setor):
+    if setor in ("Autorização","Medicamento","OPME","Garantia de Atendimento (Busca de rede)"):
+        return os.getenv("QDRANT_COLLECTION_AUT", "autorizacao_geral")
 
 def recreate(name):
     if client.collection_exists(name):
@@ -78,4 +74,4 @@ for coll, pts in buffers.items():
         client.upload_points(coll, pts, batch_size=256)
         print(f"✔  {len(pts)} pontos → {coll}")
 
-print("✅  Ingestão concluída.")
+print("  Ingestão concluída.")
