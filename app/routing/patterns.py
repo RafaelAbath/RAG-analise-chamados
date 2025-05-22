@@ -21,6 +21,11 @@ KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
     # 5️⃣ Padrões OPME gerais
     (r"(?i)\b(cpap|aparelho|lente|catarata|pr[oô]tese|endopr[oô]tese|materiais|canula)\b",
      "OPME"),
+
+     # 6️⃣ Autorização (procedimentos, juntas médicas, coberturas)
+    (r"(?i)\b(autoriz[ao]ção previa?|cobertura|junta\s+m[eé]dica|passagem\s+de\s+gastrostom\w+|"
+    r"solicita(?:ç(?:a|ã)o)?\s+(?:de\s+)?(procedimento|exame|internaç(?:a|ão)))\b",
+    "Autorização"),
 ]
 
 FINANCE_OVERRIDE_RULES: list[tuple[str, str]] = [
