@@ -36,3 +36,4 @@ FINANCE_OVERRIDE_RULES: list[tuple[str, str]] = [
      r"imposto[s]?|prestador(?:es)?)\b",
      "Financeiro / Tributos"),
 ]
+#
