@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     QDRANT_COLLECTION_NIP: str = "nip_reclames"
-    QDRANT_COLLECTION: str = "tecnicos"
+    QDRANT_COLLECTION: str     = "tecnicos"
     QDRANT_COLLECTION_AUT: str = "autorizacao_geral"
     OPENAI_API_KEY: str
     FINETUNED_MODEL: str
