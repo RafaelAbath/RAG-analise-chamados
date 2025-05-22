@@ -1,5 +1,4 @@
 from routing.patterns import KEYWORD_SECTOR_RULES, FINANCE_OVERRIDE_RULES
-from routing.authorization import AUTH_PATTERNS
 
 def get_allowed_sectors() -> list[str]:
     sectors: list[str] = []
