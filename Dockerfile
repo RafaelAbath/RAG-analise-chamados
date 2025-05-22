@@ -1,15 +1,14 @@
-# Dockerfile
 FROM python:3.11-slim
 WORKDIR /app
 
-# Instala dependências
+# 1. Copia e instala dependências
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o pacote da aplicação (core/, api/, routing/, services/)
+# 2. Copia o seu código (assegura que /app/core/config.py é o atualizado)
 COPY app/ .
 
-# Copia a pasta de dados
+# 3. Copia os dados
 COPY data/ ./data
 
 EXPOSE 8000
