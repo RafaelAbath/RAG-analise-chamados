@@ -2,6 +2,7 @@ import re
 from typing import Optional
 from routing.patterns import FINANCE_OVERRIDE_RULES
 
+
 def override_finance(text: str) -> Optional[str]:
     txt = text.lower()
     for pattern, setor in FINANCE_OVERRIDE_RULES:
