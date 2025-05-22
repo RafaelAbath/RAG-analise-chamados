@@ -2,7 +2,6 @@ from typing import Optional
 from openai import OpenAI
 from core.config import settings
 from core.text_utils import clean_setor
-from core.sector_meta import allowed_sectors
 from core.models import Chamado
 from routing.base import Router
 
