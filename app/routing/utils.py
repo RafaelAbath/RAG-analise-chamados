@@ -1,27 +1,24 @@
-from typing import Optional
-from core.config import settings
+from routing.patterns import (
+    KEYWORD_SECTOR_RULES,
+    FINANCE_OVERRIDE_RULES,
+)
+from routing.authorization import AUTH_PATTERNS
 
-# Palavras-chave para identificar NIP/Reclames/ANS/Judiciais
-NIP_KEYS = ("nip", "ans", "judicial", "reclame")
+def get_allowed_sectors() -> list[str]:
+    """
+    Build a deduplicated list of *all* sectors referenced in any
+    of our pre-routing rules, so the LLM fallback can validate
+    against this exact set.
+    """
+    sectors = []
+    sectors += [sector for _, sector in KEYWORD_SECTOR_RULES]
+    sectors += [sector for _, sector in FINANCE_OVERRIDE_RULES]
+    sectors += [sector for _, sector in AUTH_PATTERNS]
 
-# Setores que caem na coleção de autorização geral
-AUT_SETS = {
-    "Autorização",
-    "Medicamento",
-    "Garantia de Atendimento (Busca de rede)",
-}
-
-
-def collection_for(setor: str, classificacao: Optional[str] = None) -> str:
- 
-    # 1) Autorização geral
-    if setor in AUT_SETS:
-        return settings.QDRANT_COLLECTION_AUT
-    
-    # 2) NIP/Reclames/ANS/Judiciais via substring no lowercase
-    lower = setor.lower()
-    if any(key in lower for key in NIP_KEYS):
-        return settings.QDRANT_COLLECTION_NIP
-
-    # 3) Default
-    return settings.QDRANT_COLLECTION
+    seen = set()
+    allowed = []
+    for s in sectors:
+        if s not in seen:
+            seen.add(s)
+            allowed.append(s)
+    return allowed

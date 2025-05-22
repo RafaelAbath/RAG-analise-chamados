@@ -6,6 +6,9 @@ class Router(ABC):
     def __init__(self, successor: Optional['Router'] = None):
         self._successor = successor
 
+    def set_successor(self, successor: 'Router') -> None:
+        self._successor = successor
+
     def handle(self, chamado: Chamado) -> Optional[str]:
         result = self._route(chamado)
         if result:
