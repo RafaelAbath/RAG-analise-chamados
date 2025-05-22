@@ -4,17 +4,18 @@ from core.config import settings
 from core.text_utils import clean_setor
 from core.sector_meta import allowed_sectors
 from core.models import Chamado
+from routing.base import Router
 
 class LLMRouter(Router):
     def __init__(self, successor: Optional[Router] = None):
         super().__init__(successor)
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.model = settings.FINETUNED_MODEL
+        self.model  = settings.FINETUNED_MODEL
 
     def _route(self, chamado: Chamado) -> Optional[str]:
         system_msg = (
-            "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n" +
-            ", ".join(allowed_sectors)
+            "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
+            + ", ".join(allowed_sectors)
         )
         user_msg = f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
         resp = self.client.chat.completions.create(
