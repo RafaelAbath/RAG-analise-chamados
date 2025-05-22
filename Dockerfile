@@ -1,15 +1,15 @@
-# Dockerfile (no root)
+# Dockerfile
 FROM python:3.11-slim
 WORKDIR /app
 
-# instala deps
+# Instala dependências
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# copia o app inteiro para /app
+# Copia o pacote da aplicação (core/, api/, routing/, services/)
 COPY app/ .
 
-# copia dados
+# Copia a pasta de dados
 COPY data/ ./data
 
 EXPOSE 8000
