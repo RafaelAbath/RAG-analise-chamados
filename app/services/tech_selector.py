@@ -11,44 +11,39 @@ class TechSelector:
             api_key=settings.QDRANT_API_KEY
         )
 
-    def select(self, setor: str, chamado, info: dict):
-        # info contém chaves 'responsabilidades' e 'exemplos'
-        txt = (
-            f"Responsabilidades: {info['responsabilidades']}. "
-            f"Exemplos: {info['exemplos']}. "
-            f"Chamado: {chamado.titulo}. {chamado.descricao}"
-        )
+    def select(self, setor: str, chamado) -> dict:
+        
+        txt = f"{chamado.titulo} {chamado.descricao}"
         vec = self.openai.embeddings.create(
             model=settings.EMBEDDING_MODEL,
             input=txt
         ).data[0].embedding
-        collection = None
-        # decide coleção conforme setor
-        low = setor.lower()
-        if setor == settings.FINETUNED_MODEL:
-            collection = settings.QDRANT_COLLECTION_AUT
-        elif any(k in low for k in ("nip","ans","judicial","reclame")):
-            collection = settings.QDRANT_COLLECTION_NIP
-        elif setor in ("Autorização","Medicamento","OPME","Garantia de Atendimento (Busca de rede)"):
-            collection = settings.QDRANT_COLLECTION_AUT
-        else:
-            collection = settings.QDRANT_COLLECTION
 
+       
+        coll = settings.QDRANT_COLLECTION  
+
+        
         hits = self.qdrant.search(
-            collection_name=collection,
+            collection_name=coll,
             query_vector=vec,
             limit=1,
             with_payload=True,
-            query_filter=Filter(must=[FieldCondition(key="setor", match=MatchValue(value=setor))]),
+            query_filter=Filter(must=[
+                FieldCondition(key="setor", match=MatchValue(value=setor))
+            ])
         )
         if not hits:
             raise RuntimeError(f"Nenhum técnico encontrado para o setor {setor}")
 
         hit = hits[0]
+        p = hit.payload
+        
         return {
             "setor_ia": setor,
             "tecnico_id": hit.id,
-            "tecnico_nome": hit.payload["nome"],
-            "tecnico_setor": hit.payload["setor"],
-            "confianca": hit.score,
+            "tecnico_nome": p["nome"],
+            "tecnico_setor": p["setor"],
+            "responsabilidades": p.get("responsabilidades"),
+            "exemplos": p.get("exemplos"),
+            "confianca": hit.score
         }
