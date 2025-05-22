@@ -6,9 +6,6 @@ def get_allowed_sectors() -> list[str]:
     sectors += [sector for _, sector in KEYWORD_SECTOR_RULES]
  
     sectors += [sector for _, sector in FINANCE_OVERRIDE_RULES]
-    
-    sectors += [sector for _, sector in AUTH_PATTERNS]
-
    
     seen = set()
     allowed = []
