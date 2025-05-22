@@ -22,27 +22,19 @@ def get_api_key(key: str = Depends(api_key_header)):
 
 selector = TechSelector()
 
-@app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
+@app.post("/classify/")
 async def classify_and_assign(chamado: Chamado):
     text = f"{chamado.titulo} {chamado.descricao}".lower()
 
-    
     setor = router_chain.handle(chamado)
-
     if not setor:
         raise HTTPException(400, "Não foi possível determinar o setor")
 
+    # override financeiro continua igual
     if setor in ("Faturamento", "Financeiro / Tributos"):
         ov = override_finance(text)
         if ov:
             setor = ov
-
-    coll = collection_for(setor, chamado.classificacao)
-    if coll == settings.QDRANT_COLLECTION_AUT:
-        ov = override_autorizacao(text)
-        if ov:
-            setor = ov
-
     
     result = selector.select(setor, chamado)
     return Resposta(**result)
