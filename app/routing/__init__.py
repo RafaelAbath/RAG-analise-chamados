@@ -1,9 +1,13 @@
-from routing.keywords        import KeywordRouter
-from routing.classification import ClassificationRouter
-from routing.llm            import LLMRouter
+from .keywords import KeywordRouter
+from .classification import ClassificationRouter
+from .llm import LLMRouter
 
-router_chain = KeywordRouter(
-    ClassificationRouter(
-        LLMRouter()
-    )
-)
+
+keyword_router = KeywordRouter()
+classification_router = ClassificationRouter()
+llm_router = LLMRouter()
+
+
+keyword_router.set_successor(classification_router)
+classification_router.set_successor(llm_router)
+router_chain = keyword_router
