@@ -32,11 +32,10 @@ AUT_SETS = {
 }
 
 def choose_collection(setor: str) -> str:
-
-    s = setor.strip().lower()
-    if setor in AUT_SETS:
+    setor_norm = setor.strip().lower()
+    if setor_norm in {s.lower() for s in AUT_SETS}:
         return COLL_AUT
-    if any(key in s for key in NIP_KEYS):
+    if any(key in setor_norm for key in NIP_KEYS):
         return COLL_NIP
     return COLL_DEFAULT
 
