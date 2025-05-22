@@ -75,9 +75,7 @@ async def debug_classify(chamado: Chamado):
         if ov:
             setor = ov
 
-    # Aqui capturamos também o raw_model_response do LLMRouter
-    # Precisamos estender LLMRouter para expor essa informação — 
-    # por ora, vamos mockar um dict vazio
+    
     raw_model_response = {}
 
     # Busca vetor e payload
