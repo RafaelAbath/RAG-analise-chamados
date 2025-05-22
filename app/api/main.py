@@ -9,7 +9,6 @@ from core.config import settings
 from core.models import Chamado, Resposta, RespostaDebug
 from routing import router_chain
 from routing.finance import override_finance
-from routing.authorization import override_autorizacao
 from services.tech_selector import TechSelector, collection_for
 
 app = FastAPI(title="API de RAG para Chamados")
