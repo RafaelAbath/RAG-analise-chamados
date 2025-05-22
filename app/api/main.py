@@ -29,18 +29,19 @@ cls_router  = ClassificationRouter()
 
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
-    text = f"{chamado.protocolo} {chamado.descricao}".lower()
-
-    # 1) KEYWORD -------------------------------------------------------------
-    setor = kw_router.handle(chamado)
+    text = f"{chamado.titulo} {chamado.descricao}".lower()
     proveniencia = None
+
+    # 1) CLASSIFY -----------------------------------------------------------
+    setor = cls_router.handle(chamado)
     if setor:
-        proveniencia = "keyword"
-    # 2) CLASSIFY ------------------------------------------------------------
+        proveniencia = "classify"
+
+    # 2) KEYWORD ------------------------------------------------------------
     if not setor:
-        setor = cls_router.handle(chamado)
+        setor = kw_router.handle(chamado)
         if setor:
-            proveniencia = "classify"
+            proveniencia = "keyword"
     # 3) LLM + QDRANT --------------------------------------------------------
     if not setor:
         setor = llm_router.handle(chamado)
