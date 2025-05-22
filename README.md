@@ -75,11 +75,11 @@ API_KEY=
 ```bash
 git clone https://github.com/<user>/true-auditoria-rag.git
 cd true-auditoria-rag
-cp .env.example .env  # preencha as variáveis
+cp .env.example .env  
 
 docker compose up --build -d
 
-# Ingestão inicial de dados
+
 docker compose exec api python scripts/ingest_data.py
 ```
 

@@ -1,4 +1,3 @@
-# app/routing/classification.py
 import re
 from typing import Optional
 from core.models import Chamado
@@ -29,12 +28,12 @@ class ClassificationRouter(Router):
 
         norm = normalize_text(chamado.classificacao)
 
-        # Se vier com 3+ padrões de OPME na classificação, vai para 'OPME'
+        
         opme_count = sum(1 for pat in self.opme_patterns if pat in norm)
         if opme_count >= 3:
             return 'OPME'
 
-        # Se vier algum padrão de Garantia de Atendimento, direciona para esse setor
+        
         if any(pat in norm for pat in self.ga_patterns):
             return 'Garantia de Atendimento (Busca de rede)'
 

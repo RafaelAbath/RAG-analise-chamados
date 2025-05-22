@@ -1,4 +1,3 @@
-# app/api/main.py
 import logging
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security.api_key import APIKeyHeader
@@ -27,30 +26,24 @@ selector = TechSelector()
 async def classify_and_assign(chamado: Chamado):
     text = f"{chamado.titulo} {chamado.descricao}".lower()
 
-    # 1) Roteamento por palavras-chave
+    
     setor = router_chain.handle(chamado)
 
     if not setor:
         raise HTTPException(400, "Não foi possível determinar o setor")
 
-    # 2) Roteamento pela classificação, já aplicado dentro do chain
-
-    # 3) Fallback IA no chain → já dentro de router_chain
-
-    # 4) Se setor financeiro, override financeiro
     if setor in ("Faturamento", "Financeiro / Tributos"):
         ov = override_finance(text)
         if ov:
             setor = ov
 
-    # 5) Se for coleção de autorização, override de autorização
     coll = collection_for(setor, chamado.classificacao)
     if coll == settings.QDRANT_COLLECTION_AUT:
         ov = override_autorizacao(text)
         if ov:
             setor = ov
 
-    # 6) Busca vetorial no Qdrant e retorno do payload
+    
     result = selector.select(setor, chamado)
     return Resposta(**result)
 
@@ -58,12 +51,12 @@ async def classify_and_assign(chamado: Chamado):
 async def debug_classify(chamado: Chamado):
     text = f"{chamado.titulo} {chamado.descricao}".lower()
 
-    # Mesma cadeia de roteamento
+    
     setor = router_chain.handle(chamado)
     if not setor:
         raise HTTPException(400, "Não foi possível determinar o setor")
 
-    # Mesmos overrides de pós-roteamento
+    
     if setor in ("Faturamento", "Financeiro / Tributos"):
         ov = override_finance(text)
         if ov:
@@ -78,6 +71,6 @@ async def debug_classify(chamado: Chamado):
     
     raw_model_response = {}
 
-    # Busca vetor e payload
+    
     result = selector.select(setor, chamado)
     return RespostaDebug(**result, raw_model_response=raw_model_response)
