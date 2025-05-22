@@ -11,6 +11,8 @@ class TechSelector:
             api_key=settings.QDRANT_API_KEY
         )
 
+    
+
     def select(self, setor: str, chamado) -> dict:
         
         txt = f"{chamado.titulo} {chamado.descricao}"
@@ -47,3 +49,15 @@ class TechSelector:
             "exemplos": p.get("exemplos"),
             "confianca": hit.score
         }
+def collection_for(setor: str, classificacao: str | None) -> str:
+    from core.config import settings
+    s = setor.lower()
+    if classificacao and classificacao.lower() == "autorizacao_geral":
+        return settings.QDRANT_COLLECTION_AUT
+    if any(k in s for k in ("nip","ans","judicial","reclame")):
+        return settings.QDRANT_COLLECTION_NIP
+    if setor in (
+        "Autorização","Medicamento","OPME","Garantia de Atendimento (Busca de rede)",
+    ):
+        return settings.QDRANT_COLLECTION_AUT
+    return settings.QDRANT_COLLECTION
