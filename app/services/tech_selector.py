@@ -32,7 +32,7 @@ class TechSelector:
             input=txt
         ).data[0].embedding
 
-        # 2) Escolhe collection correta
+        from services.tech_selector import collection_for
         coll = collection_for(setor, chamado.classificacao)
 
         # 3) Busca no Qdrant
