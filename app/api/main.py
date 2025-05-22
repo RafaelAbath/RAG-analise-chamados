@@ -1,6 +1,9 @@
 import logging
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security.api_key import APIKeyHeader
+from routing import router_chain, llm_router
+from routing.utils import clean_setor
+
 
 from core.config import settings
 from core.models import Chamado, Resposta, RespostaDebug
@@ -43,26 +46,45 @@ async def classify_and_assign(chamado: Chamado):
 async def debug_classify(chamado: Chamado):
     text = f"{chamado.titulo} {chamado.descricao}".lower()
 
-    
+    # 1) pré-roteamento por keywords e classificação (igual ao classify)
     setor = router_chain.handle(chamado)
     if not setor:
         raise HTTPException(400, "Não foi possível determinar o setor")
-
-    
     if setor in ("Faturamento", "Financeiro / Tributos"):
         ov = override_finance(text)
         if ov:
             setor = ov
 
-    coll = collection_for(setor, chamado.classificacao)
-    if coll == settings.QDRANT_COLLECTION_AUT:
-        ov = override_autorizacao(text)
-        if ov:
-            setor = ov
+    # 2) chame a LLM **diretamente** para ver o que sai
+    system_msg = (
+        "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
+        + ", ".join(llm_router.allowed_sectors)
+    )
+    user_msg = f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
+    raw = llm_router.llm.chat.completions.create(
+        model=settings.FINETUNED_MODEL,
+        messages=[
+            {"role": "system", "content": system_msg},
+            {"role": "user",   "content": user_msg}
+        ],
+        temperature=0.0
+    )
+    bruto = clean_setor(raw.choices[0].message.content.strip())
 
-    
-    raw_model_response = {}
+    # 3) decide a collection e busca o técnico
+    result = selector.select(bruto, chamado)
 
-    
-    result = selector.select(setor, chamado)
-    return RespostaDebug(**result, raw_model_response=raw_model_response)
+    # 4) devolva tudo no debug
+    return RespostaDebug(
+        setor_ia        = result["setor_ia"],
+        tecnico_id      = result["tecnico_id"],
+        tecnico_nome    = result["tecnico_nome"],
+        tecnico_setor   = result["tecnico_setor"],
+        responsabilidades = result["responsabilidades"],
+        exemplos        = result["exemplos"],
+        confianca       = result["confianca"],
+        raw_model_response = {
+            "llm_raw": raw.choices[0].message.content.strip(),
+            "llm_setor": bruto
+        }
+    )
