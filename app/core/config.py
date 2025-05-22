@@ -1,4 +1,4 @@
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     QDRANT_COLLECTION_NIP: str = "nip_reclames"
