@@ -30,7 +30,7 @@ class TechSelector:
 
     def select(self, setor: str, chamado) -> dict:
         # 1) Gera o embedding
-        txt = f"{chamado.titulo} {chamado.descricao}"
+        txt = f"{chamado.protocolo} {chamado.descricao}"
         vec = self.openai.embeddings.create(
             model=settings.EMBEDDING_MODEL,
             input=txt
@@ -53,7 +53,7 @@ class TechSelector:
             hits = self.qdrant.search(
                 collection_name=coll,
                 query_vector=vec,
-                limit=1,
+                limit=3,
                 with_payload=True,
                 query_filter=Filter(must=[
                     FieldCondition(key="setor", match=MatchValue(value=setor))

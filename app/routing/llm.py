@@ -17,7 +17,7 @@ class LLMRouter(Router):
 
     def _route(self, chamado):
         # 1) Embedding do chamado
-        txt = f"{chamado.titulo} {chamado.descricao}"
+        txt = f"{chamado.protocolo} {chamado.descricao}"
         vec = self.llm.embeddings.create(
             model=settings.EMBEDDING_MODEL,
             input=txt
@@ -53,7 +53,7 @@ class LLMRouter(Router):
             "Com base nisso e na descrição, responda **apenas** com UM dos setores válidos:\n"
             + ", ".join(self.allowed_sectors)
         )
-        user_msg = f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
+        user_msg = f"Título: {chamado.protocolo}\nDescrição: {chamado.descricao}"
 
         resp = self.llm.chat.completions.create(
             model=settings.FINETUNED_MODEL,

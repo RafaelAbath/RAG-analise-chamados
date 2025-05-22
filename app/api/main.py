@@ -4,7 +4,8 @@ from fastapi.security.api_key import APIKeyHeader
 from routing import router_chain, llm_router
 from routing.utils import clean_setor
 
-
+from routing.keywords       import KeywordRouter
+from routing.classification import ClassificationRouter
 from core.config import settings
 from core.models import Chamado, Resposta, RespostaDebug
 from routing import router_chain
@@ -23,18 +24,42 @@ def get_api_key(key: str = Depends(api_key_header)):
     return key
 
 selector = TechSelector()
+kw_router   = KeywordRouter()
+cls_router  = ClassificationRouter()
 
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
-    setor = router_chain.handle(chamado)
+    text = f"{chamado.protocolo} {chamado.descricao}".lower()
+
+    # 1) KEYWORD -------------------------------------------------------------
+    setor = kw_router.handle(chamado)
+    proveniencia = None
+    if setor:
+        proveniencia = "keyword"
+    # 2) CLASSIFY ------------------------------------------------------------
+    if not setor:
+        setor = cls_router.handle(chamado)
+        if setor:
+            proveniencia = "classify"
+    # 3) LLM + QDRANT --------------------------------------------------------
+    if not setor:
+        setor = llm_router.handle(chamado)
+        proveniencia = "llm"
+    # 4) FINANCE OVERRIDE ----------------------------------------------------
+    if setor in ("Faturamento", "Financeiro / Tributos"):
+        ov = override_finance(text)
+        if ov:
+            setor, proveniencia = ov, "finance"
+
     if not setor:
         raise HTTPException(400, "Não foi possível determinar o setor")
+
     result = selector.select(setor, chamado)
-    return Resposta(**result)
+    return Resposta(**result, proveniencia=proveniencia)
 
 @app.post("/debug-classify/", response_model=RespostaDebug, dependencies=[Depends(get_api_key)])
 async def debug_classify(chamado: Chamado):
-    text = f"{chamado.titulo} {chamado.descricao}".lower()
+    text = f"{chamado.protocolo} {chamado.descricao}".lower()
 
     # 1) pré-roteamento por keywords e classificação (igual ao classify)
     setor = router_chain.handle(chamado)
@@ -50,7 +75,7 @@ async def debug_classify(chamado: Chamado):
         "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
         + ", ".join(llm_router.allowed_sectors)
     )
-    user_msg = f"Título: {chamado.titulo}\nDescrição: {chamado.descricao}"
+    user_msg = f"Título: {chamado.protocolo}\nDescrição: {chamado.descricao}"
     raw = llm_router.llm.chat.completions.create(
         model=settings.FINETUNED_MODEL,
         messages=[

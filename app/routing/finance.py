@@ -17,4 +17,4 @@ from routing.base import Router
 
 class FinanceOverrideRouter(Router):
     def _route(self, chamado: Chamado) -> Optional[str]:
-        return override_finance(f"{chamado.titulo} {chamado.descricao}")
+        return override_finance(f"{chamado.protocolo} {chamado.descricao}")

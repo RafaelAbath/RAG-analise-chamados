@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Any, Dict, Optional
 
 class Chamado(BaseModel):
-    titulo: str
+    protocolo: str
     descricao: str
     classificacao: Optional[str] = None
 
@@ -12,6 +12,7 @@ class Resposta(BaseModel):
     tecnico_nome: str
     tecnico_setor: str
     confianca: float
+    proveniencia: str  
 
 class RespostaDebug(Resposta):
     raw_model_response: Dict[str, Any]
