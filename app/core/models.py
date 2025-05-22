@@ -1,0 +1,17 @@
+from pydantic import BaseModel
+from typing import Any, Dict, Optional
+
+class Chamado(BaseModel):
+    titulo: str
+    descricao: str
+    classificacao: Optional[str] = None
+
+class Resposta(BaseModel):
+    setor_ia: str
+    tecnico_id: int
+    tecnico_nome: str
+    tecnico_setor: str
+    confianca: float
+
+class RespostaDebug(Resposta):
+    raw_model_response: Dict[str, Any]
