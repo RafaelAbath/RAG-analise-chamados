@@ -1,7 +1,9 @@
+# app/services/tech_selector.py
+
+from core.config import settings
 from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
-from core.config import settings
 
 def collection_for(setor: str, classificacao: str | None) -> str:
     s = setor.lower()
@@ -21,41 +23,58 @@ def collection_for(setor: str, classificacao: str | None) -> str:
 class TechSelector:
     def __init__(self):
         self.openai = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.qdrant = QdrantClient(url=settings.QDRANT_URL,
-                                   api_key=settings.QDRANT_API_KEY)
+        self.qdrant = QdrantClient(
+            url=settings.QDRANT_URL,
+            api_key=settings.QDRANT_API_KEY
+        )
 
     def select(self, setor: str, chamado) -> dict:
-        # 1) Faz embedding
+        # 1) Gera o embedding
         txt = f"{chamado.titulo} {chamado.descricao}"
         vec = self.openai.embeddings.create(
             model=settings.EMBEDDING_MODEL,
             input=txt
         ).data[0].embedding
 
-        from services.tech_selector import collection_for
-        coll = collection_for(setor, chamado.classificacao)
+        # 2) Escolhe a coleção principal e possíveis fallbacks
+        primary = collection_for(setor, chamado.classificacao)
+        candidates = [primary] + [
+            c for c in (
+                settings.QDRANT_COLLECTION_AUT,
+                settings.QDRANT_COLLECTION_NIP,
+                settings.QDRANT_COLLECTION
+            ) if c != primary
+        ]
 
-        # 3) Busca no Qdrant
-        hits = self.qdrant.search(
-            collection_name=coll,
-            query_vector=vec,
-            limit=1,
-            with_payload=True,
-            query_filter=Filter(must=[
-                FieldCondition(key="setor", match=MatchValue(value=setor))
-            ])
-        )
+        # 3) Busca no Qdrant em cada coleção até achar um hit
+        used_coll = None
+        hits = None
+        for coll in candidates:
+            hits = self.qdrant.search(
+                collection_name=coll,
+                query_vector=vec,
+                limit=1,
+                with_payload=True,
+                query_filter=Filter(must=[
+                    FieldCondition(key="setor", match=MatchValue(value=setor))
+                ])
+            )
+            if hits:
+                used_coll = coll
+                break
+
         if not hits:
             raise RuntimeError(f"Nenhum técnico encontrado para o setor {setor}")
 
         hit = hits[0]
         p = hit.payload
         return {
-            "setor_ia": setor,
-            "tecnico_id": hit.id,
-            "tecnico_nome": p["nome"],
-            "tecnico_setor": p["setor"],
+            "setor_ia":        setor,
+            "tecnico_id":      hit.id,
+            "tecnico_nome":    p["nome"],
+            "tecnico_setor":   p["setor"],
             "responsabilidades": p.get("responsabilidades"),
-            "exemplos": p.get("exemplos"),
-            "confianca": hit.score
+            "exemplos":        p.get("exemplos"),
+            "confianca":       hit.score,
+            "collection":      used_coll
         }
