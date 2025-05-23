@@ -3,9 +3,7 @@ import re
 from pathlib import Path
 
 FAT_BRUTO_CNPJ_FILE: str = "data/fat_bruto_cnpjs.txt"
-@validator("FAT_BRUTO_CNPJ_FILE", pre=True)
-def _validate_path(cls, v):        
-    return str(Path(v).expanduser().resolve())
+
 @property
 def CNPJS_FAT_BRUTO(self) -> set[str]:
         p = Path(self.FAT_BRUTO_CNPJ_FILE).expanduser().resolve()
