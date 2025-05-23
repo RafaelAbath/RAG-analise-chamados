@@ -1,5 +1,3 @@
-# app/services/tech_selector.py
-
 from core.config import settings
 from openai import OpenAI
 from qdrant_client import QdrantClient
@@ -29,14 +27,14 @@ class TechSelector:
         )
 
     def select(self, setor: str, chamado) -> dict:
-        # 1) Gera o embedding
+        
         txt = f"{chamado.protocolo} {chamado.descricao}"
         vec = self.openai.embeddings.create(
             model=settings.EMBEDDING_MODEL,
             input=txt
         ).data[0].embedding
 
-        # 2) Escolhe a coleção principal e possíveis fallbacks
+        
         primary = collection_for(setor, chamado.classificacao)
         candidates = [primary] + [
             c for c in (
@@ -46,7 +44,7 @@ class TechSelector:
             ) if c != primary
         ]
 
-        # 3) Busca no Qdrant em cada coleção até achar um hit
+        
         used_coll = None
         hits = None
         for coll in candidates:

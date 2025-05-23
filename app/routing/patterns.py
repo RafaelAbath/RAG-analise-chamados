@@ -1,28 +1,28 @@
 import re
 
 KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
-    # 1️⃣ Primeiro: ANS / NIP → Judiciais + NIPs
+    
     (r"(?i)\b(ans|nip)\b", "Judiciais + NIPs"),
 
-    # 2️⃣ Depois: OPME + Reclame / Judicial
+    
     (r"\b(opme)\b.*\b(nip|ans|judicial|reclame)s?\b"
      r"|\b(nip|ans|judicial|reclame)s?\b.*\b(opme)\b",
      "NIP Reclames e judiciais OPME"),
 
-    # 3️⃣ Home Care + Reclame / Judicial
+    
     (r"\b(home\s*care|hc)\b.*\b(nip|ans|judicial|reclame)s?\b"
      r"|\b(nip|ans|judicial|reclame)s?\b.*\b(home\s*care|hc)\b",
      "NIP Reclames e judiciais HC"),
 
-    # 4️⃣ Garantia de Atendimento (contato + whatsapp)
+    
     (r"(?i)(?=.*\bcontato\b)(?=.*\bwhatsapp\b)",
      "Garantia de Atendimento (Busca de rede)"),
 
-    # 5️⃣ Padrões OPME gerais
+    
     (r"(?i)\b(cpap|aparelho|lente|catarata|pr[oô]tese|endopr[oô]tese|materiais|canula)\b",
      "OPME"),
 
-     # 6️⃣ Autorização (procedimentos, juntas médicas, coberturas)
+     
     (r"(?i)\b(autoriz[ao]ção previa?|cobertura|junta\s+m[eé]dica|passagem\s+de\s+gastrostom\w+|"
     r"solicita(?:ç(?:a|ã)o)?\s+(?:de\s+)?(procedimento|exame|internaç(?:a|ão)))\b",
     "Autorização"),
@@ -36,4 +36,3 @@ FINANCE_OVERRIDE_RULES: list[tuple[str, str]] = [
      r"imposto[s]?|prestador(?:es)?)\b",
      "Financeiro / Tributos"),
 ]
-#

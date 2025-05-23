@@ -16,14 +16,14 @@ class LLMRouter(Router):
         self.allowed_sectors = get_allowed_sectors()
 
     def _route(self, chamado):
-        # 1) Embedding do chamado
+        
         txt = f"{chamado.protocolo} {chamado.descricao}"
         vec = self.llm.embeddings.create(
             model=settings.EMBEDDING_MODEL,
             input=txt
         ).data[0].embedding
 
-        # 2) Busca nos vetores (usando .search para permanecer compatível)
+        
         collections = [
             settings.QDRANT_COLLECTION,
             settings.QDRANT_COLLECTION_AUT,
@@ -33,19 +33,19 @@ class LLMRouter(Router):
         for coll in collections:
             hits = self.qdrant.search(
                 collection_name=coll,
-                query_vector=vec,    # .search aceita query_vector
+                query_vector=vec,    
                 limit=3,
                 with_payload=True,
             )
             neighbors.extend(hits)
 
-        # 3) Monta um pequeno sumário dos vizinhos
+        
         resumo = "\n".join(
             f"- {p.payload['nome']} ({p.payload['setor']}) [score: {p.score:.2f}]"
             for p in neighbors
         )
 
-        # 4) Prompt para a LLM, incluindo o resumo
+        
         system_msg = (
             "Você é um roteador de chamados. Abaixo estão os 3 técnicos mais próximos "
             "encontrados pelo Qdrant para este chamado:\n"
@@ -64,5 +64,5 @@ class LLMRouter(Router):
             temperature=0.0
         )
 
-        # 5) Limpa e devolve só o setor
+        
         return clean_setor(resp.choices[0].message.content.strip())

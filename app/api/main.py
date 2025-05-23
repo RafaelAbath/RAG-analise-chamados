@@ -34,16 +34,16 @@ async def classify_and_assign(chamado: Chamado):
 
     if setor:
         proveniencia = "keyword"
-    # 2) CLASSIFY ------------------------------------------------------------
+    
     if not setor:
         setor = cls_router.handle(chamado)
         if setor:
             proveniencia = "classify"
-    # 3) LLM + QDRANT --------------------------------------------------------
+    
     if not setor:
         setor = llm_router.handle(chamado)
         proveniencia = "llm"
-    # 4) FINANCE OVERRIDE ----------------------------------------------------
+    
     if setor in ("Faturamento", "Financeiro / Tributos"):
         ov = override_finance(text)
         if ov:
@@ -59,7 +59,7 @@ async def classify_and_assign(chamado: Chamado):
 async def debug_classify(chamado: Chamado):
     text = f"{chamado.protocolo} {chamado.descricao}".lower()
 
-    # 1) pré-roteamento por keywords e classificação (igual ao classify)
+    
     setor = router_chain.handle(chamado)
     if not setor:
         raise HTTPException(400, "Não foi possível determinar o setor")
@@ -68,7 +68,7 @@ async def debug_classify(chamado: Chamado):
         if ov:
             setor = ov
 
-    # 2) chame a LLM **diretamente** para ver o que sai
+    
     system_msg = (
         "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
         + ", ".join(llm_router.allowed_sectors)
@@ -84,10 +84,10 @@ async def debug_classify(chamado: Chamado):
     )
     bruto = clean_setor(raw.choices[0].message.content.strip())
 
-    # 3) decide a collection e busca o técnico
+    
     result = selector.select(bruto, chamado)
 
-    # 4) devolva tudo no debug
+    
     return RespostaDebug(
         setor_ia        = result["setor_ia"],
         tecnico_id      = result["tecnico_id"],

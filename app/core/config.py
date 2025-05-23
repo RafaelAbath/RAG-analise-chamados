@@ -8,7 +8,7 @@ def _validate_path(cls, v):
     return str(Path(v).expanduser().resolve())
 @property
 def CNPJS_FAT_BRUTO(self) -> set[str]:
-        p = Path(self.FAT_BRUTO_CNPJ_FILE)
+        p = Path(self.FAT_BRUTO_CNPJ_FILE).expanduser().resolve()
         if not p.exists():
             return set()
         raw = p.read_text(encoding="utf-8").splitlines()
