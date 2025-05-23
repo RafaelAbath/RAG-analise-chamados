@@ -32,16 +32,13 @@ async def classify_and_assign(chamado: Chamado):
     text = f"{chamado.protocolo} {chamado.descricao}".lower()
     proveniencia = None
 
-    # 1) CLASSIFY -----------------------------------------------------------
-    setor = cls_router.handle(chamado)
     if setor:
-        proveniencia = "classify"
-
-    # 2) KEYWORD ------------------------------------------------------------
+        proveniencia = "keyword"
+    # 2) CLASSIFY ------------------------------------------------------------
     if not setor:
-        setor = kw_router.handle(chamado)
+        setor = cls_router.handle(chamado)
         if setor:
-            proveniencia = "keyword"
+            proveniencia = "classify"
     # 3) LLM + QDRANT --------------------------------------------------------
     if not setor:
         setor = llm_router.handle(chamado)
