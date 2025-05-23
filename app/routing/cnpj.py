@@ -6,14 +6,16 @@ from .base import Router
 CNPJS_FAT_BRUTO = settings.CNPJS_FAT_BRUTO
 
 class CnpjRouter(Router):
-    def handle(self, chamado) -> Optional[str]:
-        if not CNPJS_FAT_BRUTO:
-            return super().handle(chamado)
+    """Se encontrar CNPJ da lista ⇒ setor 'Faturamento Bruto'."""
 
-        digits = re.sub(r"\D", "", f"{chamado.protocolo}{chamado.descricao}")
+    def _route(self, chamado) -> Optional[str]:
+        if not CNPJS_FAT_BRUTO:
+            return None
+
+        digits = re.sub(r"\D", "", f"{chamado.titulo}{chamado.descricao}")
         for cnpj in CNPJS_FAT_BRUTO:
             if cnpj and cnpj in digits:
-                
-                chamado.proveniencia = "cnpj"      
+                # opcional: marque a proveniência
+                chamado.proveniencia = "cnpj"
                 return "Faturamento Bruto"
-        return super().handle(chamado)
+        return None
