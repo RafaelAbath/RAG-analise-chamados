@@ -1,4 +1,18 @@
 from pydantic_settings import BaseSettings
+import re
+from pathlib import Path
+
+FAT_BRUTO_CNPJ_FILE: str = "data/fat_bruto_cnpjs.txt"
+@validator("FAT_BRUTO_CNPJ_FILE", pre=True)
+def _validate_path(cls, v):        
+    return str(Path(v).expanduser().resolve())
+@property
+def CNPJS_FAT_BRUTO(self) -> set[str]:
+        p = Path(self.FAT_BRUTO_CNPJ_FILE)
+        if not p.exists():
+            return set()
+        raw = p.read_text(encoding="utf-8").splitlines()
+        return {re.sub(r"\D", "", line) for line in raw if line.strip()}
 
 class Settings(BaseSettings):
     QDRANT_COLLECTION_NIP: str = "nip_reclames"
