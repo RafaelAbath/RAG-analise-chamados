@@ -30,8 +30,10 @@ cls_router  = ClassificationRouter()
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
     text = f"{chamado.protocolo} {chamado.descricao}".lower()
+    
+    setor = None
     proveniencia = None
-
+    setor = kw_router.handle(chamado)
     if setor:
         proveniencia = "keyword"
     
