@@ -5,6 +5,7 @@ class Chamado(BaseModel):
     protocolo: str
     descricao: str
     classificacao: Optional[str] = None
+    collection: Optional[str] = None
 
 class Resposta(BaseModel):
     setor_ia: str

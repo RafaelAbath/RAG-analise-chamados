@@ -1,4 +1,5 @@
 from core.config import settings
+from typing import List
 
 SECTOR2COLL = {
     "Autorização"                              : settings.QDRANT_COLL_AUTH,
@@ -32,3 +33,5 @@ SECTOR2COLL = {
 
 def collection_for(setor: str) -> str:
     return SECTOR2COLL.get(setor, settings.QDRANT_COLL_GERAL)
+
+ALL_COLLECTIONS: List[str] = sorted(set(SECTOR2COLL.values()))

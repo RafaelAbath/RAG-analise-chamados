@@ -1,106 +1,105 @@
 import logging
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security.api_key import APIKeyHeader
-from routing import router_chain, llm_router
-from routing.utils import clean_setor
 
-from routing.keywords       import KeywordRouter
-from routing.classification import ClassificationRouter
 from core.config import settings
 from core.models import Chamado, Resposta, RespostaDebug
-from routing import router_chain
+from routing import router_chain, llm_router
+from routing.utils import clean_setor
 from routing.finance import override_finance
 from services.tech_selector import TechSelector
-from services.collection_mapper import collection_for
 
+# -----------------------------------------------------------------------------
 app = FastAPI(title="API de RAG para Chamados")
+
 logger = logging.getLogger("app")
 logger.setLevel(logging.INFO)
 
 api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=True)
+
 
 def get_api_key(key: str = Depends(api_key_header)):
     if key != settings.API_KEY:
         raise HTTPException(401, "Chave de API inválida ou ausente")
     return key
 
-selector = TechSelector()
-kw_router   = KeywordRouter()
-cls_router  = ClassificationRouter()
 
+selector = TechSelector()
+
+# =============================================================================
+#  ROTA PRINCIPAL
+# =============================================================================
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
-    text = f"{chamado.protocolo} {chamado.descricao}".lower()
-    
-    setor = None
-    proveniencia = None
-    setor = kw_router.handle(chamado)
-    if setor:
-        proveniencia = "keyword"
-    
-    if not setor:
-        setor = cls_router.handle(chamado)
-        if setor:
-            proveniencia = "classify"
-    
-    if not setor:
-        setor = llm_router.handle(chamado)
-        proveniencia = "llm"
-    
-    if setor in ("Faturamento", "Financeiro / Tributos"):
-        ov = override_finance(text)
-        if ov:
-            setor, proveniencia = ov, "finance"
-
-    if not setor:
-        raise HTTPException(400, "Não foi possível determinar o setor")
-
-    result = selector.select(setor, chamado)
-    return Resposta(**result, proveniencia=proveniencia)
-
-@app.post("/debug-classify/", response_model=RespostaDebug, dependencies=[Depends(get_api_key)])
-async def debug_classify(chamado: Chamado):
-    text = f"{chamado.protocolo} {chamado.descricao}".lower()
-
-    
+    """
+    Executa toda a cadeia de roteamento (palavra-chave ➜ Qdrant ➜ regras ➜ LLM)
+    e devolve o técnico responsável.
+    """
+    # 1️⃣ Roteamento completo
     setor = router_chain.handle(chamado)
+
     if not setor:
         raise HTTPException(400, "Não foi possível determinar o setor")
+
+    # 2️⃣ Ajuste fino para casos financeiros
+    texto = f"{chamado.protocolo} {chamado.descricao}".lower()
     if setor in ("Faturamento", "Financeiro / Tributos"):
-        ov = override_finance(text)
+        ov = override_finance(texto)
         if ov:
             setor = ov
 
-    
+    # 3️⃣ Selecionar técnico na collection adequada
+    result = selector.select(setor, chamado)
+    return Resposta(
+        **result,
+        proveniencia=getattr(chamado, "proveniencia", "flow"),
+    )
+
+
+# =============================================================================
+#  ENDPOINT DE DEPURAÇÃO
+# =============================================================================
+@app.post("/debug-classify/", response_model=RespostaDebug, dependencies=[Depends(get_api_key)])
+async def debug_classify(chamado: Chamado):
+    """
+    Faz apenas o segundo passe LLM (LLMSecondPassRouter) e devolve
+    tanto a resposta crua quanto o técnico selecionado — útil para testar o modelo.
+    """
+    # 1️⃣ Chamada direta ao LLMSecondPassRouter
     system_msg = (
         "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
-        + ", ".join(llm_router.allowed_sectors)
+        + ", ".join(llm_router.allowed)                     # lista de setores permitidos
     )
-    user_msg = f"Título: {chamado.protocolo}\nDescrição: {chamado.descricao}"
+    user_msg = f"Protocolo: {chamado.protocolo}\nDescrição: {chamado.descricao}"
+
     raw = llm_router.llm.chat.completions.create(
         model=settings.FINETUNED_MODEL,
         messages=[
             {"role": "system", "content": system_msg},
-            {"role": "user",   "content": user_msg}
+            {"role": "user", "content": user_msg},
         ],
-        temperature=0.0
+        temperature=0.0,
     )
-    bruto = clean_setor(raw.choices[0].message.content.strip())
 
-    
-    result = selector.select(bruto, chamado)
+    setor_bruto = clean_setor(raw.choices[0].message.content.strip())
 
-    
+    if not setor_bruto:
+        raise HTTPException(400, "LLM não retornou um setor válido")
+
+    # 2️⃣ Selecionar técnico com base na saída bruta do LLM
+    result = selector.select(setor_bruto, chamado)
+
+    # 3️⃣ Resposta de depuração
     return RespostaDebug(
-        setor_ia        = result["setor_ia"],
-        tecnico_id      = result["tecnico_id"],
-        tecnico_nome    = result["tecnico_nome"],
-        tecnico_setor   = result["tecnico_setor"],
-        responsabilidades = result["responsabilidades"],
-        exemplos        = result["exemplos"],
-        confianca       = result["confianca"],
-        raw_model_response = {
+        setor_ia=result["setor_ia"],
+        tecnico_id=result["tecnico_id"],
+        tecnico_nome=result["tecnico_nome"],
+        tecnico_setor=result["tecnico_setor"],
+        responsabilidades=result["responsabilidades"],
+        exemplos=result["exemplos"],
+        confianca=result["confianca"],
+        raw_model_response={
             "llm_raw": raw.choices[0].message.content.strip(),
-            "llm_setor": bruto
-        }
+            "llm_setor": setor_bruto,
+        },
     )

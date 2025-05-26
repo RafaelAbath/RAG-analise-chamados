@@ -14,7 +14,6 @@ class CnpjRouter(Router):
         digits = re.sub(r"\D", "", f"{chamado.protocolo}{chamado.descricao}")
         for cnpj in CNPJS_FAT_BRUTO:
             if cnpj and cnpj in digits:
-                # opcional: marque a proveniência
                 chamado.proveniencia = "cnpj"
                 return "Faturamento Bruto"
         return None
