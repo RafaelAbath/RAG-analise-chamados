@@ -3,19 +3,26 @@ import re
 from pathlib import Path
 
 class Settings(BaseSettings):
-    QDRANT_COLLECTION_NIP: str = "nip_reclames"
-    QDRANT_COLLECTION: str     = "tecnicos"
-    QDRANT_COLLECTION_AUT: str = "autorizacao_geral"
-    OPENAI_API_KEY: str
-    FINETUNED_MODEL: str
-    EMBEDDING_MODEL: str
-    QDRANT_URL: str
-    QDRANT_API_KEY: str
-    API_KEY: str
-    FAT_BRUTO_CNPJ_FILE: str = "data/fat_bruto_cnpjs.txt"
+    API_KEY:           str
+    OPENAI_API_KEY:    str
+    EMBEDDING_MODEL:   str
+    FINETUNED_MODEL:   str
 
+    QDRANT_URL:        str
+    QDRANT_API_KEY:    str
+
+    QDRANT_COLL_AUTH:  str   
+    QDRANT_COLL_NIPS:  str   
+    QDRANT_COLL_FIN:   str   
+    QDRANT_COLL_REEMB: str   
+    QDRANT_COLL_ODO:   str   
+    QDRANT_COLL_GERAL: str   
+
+    FAT_BRUTO_CNPJ_FILE: Path
     class Config:
         env_file = ".env"
+        env_prefix = ""
+
 
     @property
     def CNPJS_FAT_BRUTO(self) -> set[str]:

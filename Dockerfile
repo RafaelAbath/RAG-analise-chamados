@@ -3,6 +3,8 @@ FROM python:3.11-slim
 WORKDIR /app
 
 
+ENV PYTHONPATH=/app
+
 COPY requirements.txt .
 
 

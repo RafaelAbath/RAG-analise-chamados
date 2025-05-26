@@ -10,7 +10,8 @@ from core.config import settings
 from core.models import Chamado, Resposta, RespostaDebug
 from routing import router_chain
 from routing.finance import override_finance
-from services.tech_selector import TechSelector, collection_for
+from services.tech_selector import TechSelector
+from services.collection_mapper import collection_for
 
 app = FastAPI(title="API de RAG para Chamados")
 logger = logging.getLogger("app")

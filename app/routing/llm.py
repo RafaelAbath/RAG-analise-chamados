@@ -25,9 +25,9 @@ class LLMRouter(Router):
 
         
         collections = [
-            settings.QDRANT_COLLECTION,
-            settings.QDRANT_COLLECTION_AUT,
-            settings.QDRANT_COLLECTION_NIP,
+            settings.QDRANT_COLL_AUTH,    
+            settings.QDRANT_COLL_NIPS,    
+            settings.QDRANT_COLL_GERAL,   
         ]
         neighbors = []
         for coll in collections:

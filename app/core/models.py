@@ -12,7 +12,8 @@ class Resposta(BaseModel):
     tecnico_nome: str
     tecnico_setor: str
     confianca: float
-    proveniencia: str  
+    proveniencia: str 
+    collection: str
 
 class RespostaDebug(Resposta):
     raw_model_response: Dict[str, Any]
