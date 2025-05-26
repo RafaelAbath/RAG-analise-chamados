@@ -33,4 +33,8 @@ class LLMSecondPassRouter(Router):
             messages=msgs,
             temperature=0.0,
         )
-        return clean_setor(raw.choices[0].message.content.strip())
+        setor = clean_setor(raw.choices[0].message.content.strip())
+        chamado.proveniencia = "llm"
+        return setor
+
+    

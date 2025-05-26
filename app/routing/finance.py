@@ -3,12 +3,13 @@ from typing import Optional
 from routing.patterns import FINANCE_OVERRIDE_RULES
 
 
-def override_finance(text: str) -> Optional[str]:
-    txt = text.lower()
+def override_finance(setor_atual: str, text: str) -> tuple[str, str | None]:
     for pattern, setor in FINANCE_OVERRIDE_RULES:
-        if re.search(pattern, txt, flags=re.I):
-            return setor
-    return None
+        if re.search(pattern, text, flags=re.I) and setor != setor_atual:
+            return setor, "finance_override"
+    return setor_atual, None
+
+
 
 
 

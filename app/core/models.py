@@ -6,6 +6,7 @@ class Chamado(BaseModel):
     descricao: str
     classificacao: Optional[str] = None
     collection: Optional[str] = None
+    proveniencia: Optional[str] = None 
 
 class Resposta(BaseModel):
     setor_ia: str
@@ -18,3 +19,6 @@ class Resposta(BaseModel):
 
 class RespostaDebug(Resposta):
     raw_model_response: Dict[str, Any]
+
+class Config:
+        orm_mode = True

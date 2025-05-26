@@ -1,5 +1,7 @@
 # routing/collection_rules.py
 from routing.base import Router
+from typing import Optional           
+from core.models import Chamado
 import re
 from routing.patterns import FINANCE_OVERRIDE_RULES, KEYWORD_SECTOR_RULES
 COLLECTION_RULES = {
@@ -9,12 +11,14 @@ COLLECTION_RULES = {
 }
 
 class CollectionRuleRouter(Router):
-    def _route(self, chamado):
+    def _route(self, chamado: Chamado) -> Optional[str]:
         coll = getattr(chamado, "collection", None)
         if not coll:
             return None
+
         text = f"{chamado.protocolo} {chamado.descricao}"
         for pattern, setor in COLLECTION_RULES.get(coll, []):
             if re.search(pattern, text, flags=re.I):
+                chamado.proveniencia = "collection_rule"
                 return setor
         return None

@@ -26,15 +26,8 @@ def get_api_key(key: str = Depends(api_key_header)):
 
 selector = TechSelector()
 
-# =============================================================================
-#  ROTA PRINCIPAL
-# =============================================================================
 @app.post("/classify/", response_model=Resposta, dependencies=[Depends(get_api_key)])
 async def classify_and_assign(chamado: Chamado):
-    """
-    Executa toda a cadeia de roteamento (palavra-chave ➜ Qdrant ➜ regras ➜ LLM)
-    e devolve o técnico responsável.
-    """
     # 1️⃣ Roteamento completo
     setor = router_chain.handle(chamado)
 
@@ -43,22 +36,25 @@ async def classify_and_assign(chamado: Chamado):
 
     # 2️⃣ Ajuste fino para casos financeiros
     texto = f"{chamado.protocolo} {chamado.descricao}".lower()
-    if setor in ("Faturamento", "Financeiro / Tributos"):
-        ov = override_finance(texto)
-        if ov:
-            setor = ov
 
-    # 3️⃣ Selecionar técnico na collection adequada
+    # 1️⃣ Pipeline completo
+    setor = router_chain.handle(chamado)
+    if not setor:
+        raise HTTPException(400, "Não foi possível determinar o setor")
+
+    # 2️⃣ Override financeiro **somente** se a collection for 'financeiros'
+    if chamado.collection == settings.QDRANT_COLL_FIN:
+        setor, prov_fin = override_finance(setor, texto)
+        if prov_fin:
+            chamado.proveniencia = prov_fin      # marca 'finance_override'
+    # caso contrário, não faz nada
+
+    # 3️⃣ Selecionar técnico
     result = selector.select(setor, chamado)
     return Resposta(
         **result,
-        proveniencia=getattr(chamado, "proveniencia", "flow"),
+        proveniencia=getattr(chamado, "proveniencia", "desconhecido"),
     )
-
-
-# =============================================================================
-#  ENDPOINT DE DEPURAÇÃO
-# =============================================================================
 @app.post("/debug-classify/", response_model=RespostaDebug, dependencies=[Depends(get_api_key)])
 async def debug_classify(chamado: Chamado):
     """
