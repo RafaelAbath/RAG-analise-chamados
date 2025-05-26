@@ -2,6 +2,7 @@ import re
 
 KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
     
+    (r"(?i)\b(medicamento|dosagem|medicação|comprimido)\b", "Medicamento"),
 
     (r"(?i)\bsolicita(?:r|ção\s+de)\s+reembolso\b", "Reembolso"),
 
@@ -24,10 +25,6 @@ KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
     
     (r"(?i)(?=.*\bcontato\b)(?=.*\bwhatsapp\b)",
      "Garantia de Atendimento (Busca de rede)"),
-
-     (r"(?i)\b(medicamento|dosagem|medicação|comprimido\s)\b",
- "Medicamento"),
-
     
     (r"(?i)\b(cpap|aparelho|lente|catarata|pr[oô]tese|endopr[oô]tese|materiais|canula)\b",
      "OPME"),
