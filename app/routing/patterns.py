@@ -25,7 +25,7 @@ KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
     (r"(?i)(?=.*\bcontato\b)(?=.*\bwhatsapp\b)",
      "Garantia de Atendimento (Busca de rede)"),
 
-     (r"(?i)\b(medicamento|dosagem)\b",
+     (r"(?i)\b(medicamento|dosagem|medicação|comprimido\s)\b",
  "Medicamento"),
 
     
