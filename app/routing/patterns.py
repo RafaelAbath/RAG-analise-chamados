@@ -22,8 +22,9 @@ KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
      "NIP Reclames e judiciais HC"),
 
     
-    (r"(?i)(?=.*\bcontato\b)(?=.*\bwhatsapp\b)|\bbenefici[áa]ria\s+entrou\s+em\s+contato\s+solicitando\s+informa(?:ç|c)ão\b", 
+    (r"(?i)(?=.*\bcontato\b)(?=.*\bwhatsapp\b)|\bbenefici[áa]ria\s+entrou\s+em\s+contato\s+solicitando\s+informa(?:ç|c)ão\b|\binformar\s+sobre\b",
     "Garantia de Atendimento (Busca de rede)"),
+
 
 
     (r"(?i)\b(nota[s]?\s+fiscal(?:is)?|issqn|inss|cadastro\s+tribut[áa]rio|"
