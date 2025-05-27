@@ -2,13 +2,11 @@ import re
 
 KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
     
+    (r"(?i)\b(domiciliar|internação\s+domiciliar|home\s*care)\b", "Home Care"),
+
     (r"(?i)\b(medicamento|dosagem|medicação|comprimido)\b", "Medicamento"),
 
     (r"(?i)\bsolicita(?:r|ção\s+de)\s+reembolso\b", "Reembolso"),
-
-    (r"(?i)\b(nota[s]?\s+fiscal(?:is)?|issqn|inss|cadastro\s+tribut[áa]rio|"
-     r"imposto[s]?|prestador(?:es)?)\b",
-     "Financeiro / Tributos"),
 
     (r"(?i)\b(ans|nip)\b", "Judiciais + NIPs"),
 
@@ -25,6 +23,10 @@ KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
     
     (r"(?i)(?=.*\bcontato\b)(?=.*\bwhatsapp\b)",
      "Garantia de Atendimento (Busca de rede)"),
+
+    (r"(?i)\b(nota[s]?\s+fiscal(?:is)?|issqn|inss|cadastro\s+tribut[áa]rio|"
+    r"imposto[s]?|prestador(?:es)?)\b",
+    "Financeiro / Tributos"),
     
     (r"(?i)\b(cpap|aparelho|lente|catarata|pr[oô]tese|endopr[oô]tese|materiais|canula)\b",
      "OPME"),
@@ -32,16 +34,15 @@ KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
      
     (r"(?i)\b(autoriz[ao]ção previa?|cobertura|junta\s+m[eé]dica|passagem\s+de\s+gastrostom\w+|"
     r"solicita(?:ç(?:a|ã)o)?\s+(?:de\s+)?(procedimento|exame|internaç(?:a|ão)))\b",
-    "Autorização"),
+    "Autorização"),   
 ]
 
 FINANCE_OVERRIDE_RULES: list[tuple[str, str]] = [
-    # 🔹 PRIORIDADE 1 — documentos fiscais
+
     (r"(?i)\b(nota[s]?\s+fiscal(?:is)?|issqn|inss|cadastro\s+tribut[áa]rio|"
      r"imposto[s]?|prestador(?:es)?|xml\s+nf[e]?)\b",
      "Financeiro / Tributos"),
-
-    # 🔸 PRIORIDADE 2 — itens de cobrança interna
+ 
     (r"(?i)\b(benefici[áa]rio[sc]?|coparticipa(?:ç[aã]o)?|peg(?:s)?|"
      r"glosa[s]?|demonstrativo[s]?|portal\s+sa[úu]de\s+caixa)\b",
      "Faturamento"),
