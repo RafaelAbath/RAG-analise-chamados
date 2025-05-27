@@ -4,9 +4,10 @@ KEYWORD_SECTOR_RULES: list[tuple[str, str]] = [
     
     (r"(?i)\b(domiciliar|internação\s+domiciliar|home\s*care)\b", "Home Care"),
 
-    (r"(?i)\b(medicamento|dosagem|medicação|comprimido)\b", "Medicamento"),
+    (r"(?i)\b(medicamento|dosagem|medicação|comprimido|quimioterapia)\b", "Medicamento"),
 
-    (r"(?i)\bsolicita(?:r|ção\s+de)\s+reembolso\b", "Reembolso"),
+    (r"(?i)\b(solicita(?:r|ção\s+de)\s+reembolso|reembolso\s+integral|anali[sz]e\s+de\s+reembolso\s+integral)\b", "Reembolso"),
+
 
     (r"(?i)\b(ans|nip)\b", "Judiciais + NIPs"),
 
