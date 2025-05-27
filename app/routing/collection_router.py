@@ -1,4 +1,3 @@
-# routing/collection_router.py
 from routing.base import Router
 from services.collection_mapper import ALL_COLLECTIONS
 from core.config import settings

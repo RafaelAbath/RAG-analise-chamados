@@ -1,14 +1,8 @@
-# routing/collection_rules.py
-from routing.base import Router
-from typing import Optional           
-from core.models import Chamado
 import re
-from routing.patterns import FINANCE_OVERRIDE_RULES, KEYWORD_SECTOR_RULES
-COLLECTION_RULES = {
-    "financeiros": FINANCE_OVERRIDE_RULES,
-    "authorization_geral": KEYWORD_SECTOR_RULES,   # exemplo – ajuste conforme precisar
-    # …adicione aqui outras collections
-}
+from typing import Optional
+from core.models import Chamado
+from routing.base import Router
+from routing.patterns import COLLECTION_RULES  
 
 class CollectionRuleRouter(Router):
     def _route(self, chamado: Chamado) -> Optional[str]:

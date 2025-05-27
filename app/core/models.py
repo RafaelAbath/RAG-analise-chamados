@@ -4,7 +4,6 @@ from typing import Any, Dict, Optional
 class Chamado(BaseModel):
     protocolo: str
     descricao: str
-    classificacao: Optional[str] = None
     collection: Optional[str] = None
     proveniencia: Optional[str] = None 
 

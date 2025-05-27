@@ -6,7 +6,7 @@ SECTOR2COLL = {
     "OPME"                                     : settings.QDRANT_COLL_AUTH,
     "Medicamento"                              : settings.QDRANT_COLL_AUTH,
     "TEA/TGD/TDAH"                             : settings.QDRANT_COLL_AUTH,
-    "Garantia de Atendimento (Busca de rede)"  : settings.QDRANT_COLL_AUTH,
+    "Home Care"                                : settings.QDRANT_COLL_AUTH,
 
     "Judiciais + NIPs"                         : settings.QDRANT_COLL_NIPS,
     "NIP Reclames e judiciais OPME"            : settings.QDRANT_COLL_NIPS,
@@ -26,7 +26,7 @@ SECTOR2COLL = {
     "Odonto Reembolso"                         : settings.QDRANT_COLL_ODO,
     "Odonto Autorização"                       : settings.QDRANT_COLL_ODO,
 
-    "Home Care"                                : settings.QDRANT_COLL_GERAL,
+    "Garantia de Atendimento (Busca de rede)"  : settings.QDRANT_COLL_GERAL,
     "Prévia de Reembolso + Programas"          : settings.QDRANT_COLL_GERAL,
     "Credenciamento + Termo Aditivo"           : settings.QDRANT_COLL_GERAL,
 }
