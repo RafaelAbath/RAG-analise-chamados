@@ -6,6 +6,7 @@ from .cnpj                 import CnpjRouter
 coll_router    = CollectionRouter()
 rule_router    = CollectionRuleRouter()
 fallback_router = LLMSecondPassRouter()
+cnpj_router     = CnpjRouter()
 
 
 coll_router.set_successor(rule_router)
