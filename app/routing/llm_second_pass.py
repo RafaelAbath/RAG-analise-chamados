@@ -15,12 +15,19 @@ class LLMSecondPassRouter(Router):
         })
 
     def _route(self, chamado):
+         
+        coll = getattr(chamado, "collection", None) or "geral"
+
+        
+        options = [setor for _, setor in COLLECTION_RULES.get(coll, [])]
+
         msgs = [
             {
                 "role": "system",
                 "content": (
-                    "Você é um roteador de chamados. Responda APENAS com um dos setores válidos:\n"
-                    + ", ".join(self.allowed)
+                    f"Você é um roteador de chamados para a coleção “{coll}”.\n"
+                    "Responda **exatamente** com um destes setores (sem aspas):\n"
+                     "\n".join(f"- {s}" for s in options)
                 ),
             },
             {
