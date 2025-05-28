@@ -2,6 +2,7 @@ from routing.base import Router
 from routing.utils import clean_setor
 from routing.patterns import COLLECTION_RULES
 from core.config import settings
+from core.models import Chamado
 from openai import OpenAI
 
 class LLMSecondPassRouter(Router):
